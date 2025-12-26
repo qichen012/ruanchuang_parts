@@ -1,0 +1,1 @@
+{"messages": [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": "语音转写：<|startofspeech|>!/path/to/wav<|endofspeech|>"}, {"role": "assistant", "content": "content of /path/to/wav"}], "speech_length": 42, "text_length": 42}

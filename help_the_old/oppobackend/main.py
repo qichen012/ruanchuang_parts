@@ -7,7 +7,7 @@ import time
 import sys
 
 # 添加 Fun-ASR 仓库路径到 Python 路径
-FUN_ASR_REPO = "/Users/xwj/Desktop/ruanchuang/FunASR/Fun-ASR"
+FUN_ASR_REPO = "/Users/xwj/Desktop/ruanchuang/help_the_old/FunASR/Fun-ASR"
 sys.path.insert(0, FUN_ASR_REPO)
 
 app = FastAPI()
@@ -19,7 +19,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 print("⏳ 正在初始化 Fun-ASR-Nano 模型...")
 
 # 本地模型权重路径
-LOCAL_MODEL_DIR = "/Users/xwj/Desktop/ruanchuang/FunASR/Fun-ASR-Nano-2512"
+LOCAL_MODEL_DIR = "/Users/xwj/Desktop/ruanchuang/help_the_old/FunASR/Fun-ASR-Nano-2512"
 # model.py 路径（在 Fun-ASR 仓库根目录）
 MODEL_PY_PATH = os.path.join(FUN_ASR_REPO, "model.py")
 

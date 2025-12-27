@@ -11,6 +11,7 @@ export PHONE_AGENT_MODEL="autoglm-phone"
 #export PHONE_AGENT_API_KEY="your api key"
 
 # 3. 运行主程序，"$@" 表示把你输入的后续指令传进去
+cd help_the_old
 cd AutoGLM-phone
 cd Open-AutoGLM
 

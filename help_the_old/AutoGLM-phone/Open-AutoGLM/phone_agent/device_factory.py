@@ -10,7 +10,7 @@ class DeviceType(Enum):
     ADB = "adb"
     HDC = "hdc"
     IOS = "ios"
-
+    ACCESSIBILITY = "accessibility"
 
 class DeviceFactory:
     """
@@ -41,6 +41,10 @@ class DeviceFactory:
                 from phone_agent import hdc
 
                 self._module = hdc
+            elif self.device_type == DeviceType.ACCESSIBILITY:
+                from phone_agent import accessibility
+
+                self._module = accessibility
             else:
                 raise ValueError(f"Unknown device type: {self.device_type}")
         return self._module
@@ -135,6 +139,11 @@ class DeviceFactory:
             from phone_agent.hdc import HDCConnection
 
             return HDCConnection
+        elif self.device_type == DeviceType.ACCESSIBILITY:
+            # 兼容性处理，这里的 ADBConnection 是 AccessibilityConnection 的别名
+            from phone_agent.accessibility import ADBConnection
+
+            return ADBConnection
         else:
             raise ValueError(f"Unknown device type: {self.device_type}")
 

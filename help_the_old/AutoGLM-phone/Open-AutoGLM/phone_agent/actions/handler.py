@@ -93,6 +93,7 @@ class ActionHandler:
             "Launch": self._handle_launch,
             "Tap": self._handle_tap,
             "Type": self._handle_type,
+            "Input": self._handle_type,
             "Type_Name": self._handle_type,
             "Swipe": self._handle_swipe,
             "Back": self._handle_back,
@@ -151,25 +152,14 @@ class ActionHandler:
     def _handle_type(self, action: dict, width: int, height: int) -> ActionResult:
         """Handle text input action."""
         text = action.get("text", "")
-
         device_factory = get_device_factory()
-
-        # Switch to ADB keyboard
-        original_ime = device_factory.detect_and_set_adb_keyboard(self.device_id)
-        time.sleep(TIMING_CONFIG.action.keyboard_switch_delay)
-
-        # Clear existing text and type new text
-        device_factory.clear_text(self.device_id)
-        time.sleep(TIMING_CONFIG.action.text_clear_delay)
-
-        # Handle multiline text by splitting on newlines
+        
+        # 直接调用无障碍输入接口
         device_factory.type_text(text, self.device_id)
-        time.sleep(TIMING_CONFIG.action.text_input_delay)
-
-        # Restore original keyboard
-        device_factory.restore_keyboard(original_ime, self.device_id)
-        time.sleep(TIMING_CONFIG.action.keyboard_restore_delay)
-
+        
+        # 只需要极短的等待（0.5s - 1s），让手机完成粘贴动作
+        time.sleep(1.0) 
+        
         return ActionResult(True, False)
 
     def _handle_swipe(self, action: dict, width: int, height: int) -> ActionResult:

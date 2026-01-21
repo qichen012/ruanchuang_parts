@@ -1,0 +1,182 @@
+{
+  "id": "root_01",
+  "title": "第3章 离散信源",
+  "content": "本章系统研究离散信源的建模、熵的计算方法、有记忆结构（马尔可夫链与马氏信源）及其在自然语言中的应用，核心目标是定义并计算极限熵 H∞，进而评估信源效率与冗余度。",
+  "children": [
+    {
+      "id": "node_01",
+      "title": "离散信源的分类与数学模型",
+      "content": "信源按符号取值（离散/连续）、记忆性（无记忆/有记忆）、字母表大小（有限/无限）、时间特性（平稳/非平稳）进行正交分类；单符号无记忆信源模型为 [a_i; p(a_i)]，N次扩展源为 X^N = (X₁,…,X_N)。",
+      "relatedNodeId": null,
+      "children": [
+        {
+          "id": "node_01_1",
+          "title": "单符号无记忆信源模型",
+          "content": "数学模型：\n\\[\n\\begin{bmatrix} a_1 & \\cdots & a_n \\\\ p(a_1) & \\cdots & p(a_n) \\end{bmatrix}, \\quad \\sum_{i=1}^n p(a_i) = 1\n\\]\n（见 p.7）",
+          "relatedNodeId": null,
+          "children": []
+        },
+        {
+          "id": "node_01_2",
+          "title": "N次扩展源定义",
+          "content": "X^N = (X₁, X₂, ..., X_N)，若无记忆，则联合概率为乘积形式（p.9–10）。",
+          "relatedNodeId": "node_02_1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_02",
+      "title": "离散无记忆信源的熵",
+      "content": "熵用于度量不确定性；无记忆信源的N次扩展熵具有可加性。",
+      "relatedNodeId": null,
+      "children": [
+        {
+          "id": "node_02_1",
+          "title": "单符号熵定义",
+          "content": "H(X) = -∑ p(a_i) log p(a_i)；二元信源：H(p) = -p log p - (1-p) log(1-p)（p.14）。",
+          "relatedNodeId": null,
+          "children": []
+        },
+        {
+          "id": "node_02_2",
+          "title": "N次扩展熵（定理3.1）",
+          "content": "若信源无记忆，则 H(X^N) = N H(X)（p.16）。此公式仅在独立同分布下成立，**不适用于有记忆信源**。",
+          "relatedNodeId": "node_03_3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_03",
+      "title": "离散平稳信源的熵",
+      "content": "引入平稳性后，信源可能具有记忆；通过平均符号熵和极限条件熵定义熵率 H∞。",
+      "relatedNodeId": null,
+      "children": [
+        {
+          "id": "node_03_1",
+          "title": "平稳信源定义",
+          "content": "对任意 N 和时移 k，有 p(x₁,…,x_N) = p(x_{k+1},…,x_{k+N})（p.19）。由此推出条件概率也平稳（p.22 例3.2续）。",
+          "relatedNodeId": null,
+          "children": []
+        },
+        {
+          "id": "node_03_2",
+          "title": "平均符号熵与熵率",
+          "content": "平均符号熵：\\( \\bar{H}_N = \\frac{1}{N} H(X^N) \\)（p.24）；\n极限熵（熵率）：\\( H_\\infty = \\lim_{N\\to\\infty} \\bar{H}_N = \\lim_{N\\to\\infty} H(X_N | X_1^{N-1}) \\)（p.25）。",
+          "relatedNodeId": null,
+          "children": []
+        },
+        {
+          "id": "node_03_3",
+          "title": "定理3.3：极限条件熵等于熵率",
+          "content": "对任意离散平稳信源，若 H(X₁) < ∞，则\n\\[\nH_\\infty = \\lim_{N\\to\\infty} H(X_N | X_1^{N-1})\n\\]\n（p.26–30）。这是**所有后续 H∞ 计算的理论基础**。",
+          "relatedNodeId": "node_05_3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_04",
+      "title": "有限状态马尔可夫链",
+      "content": "作为建模有记忆信源的工具，马氏链提供有限记忆结构，并可通过平稳分布刻画长期行为。",
+      "relatedNodeId": null,
+      "children": [
+        {
+          "id": "node_04_1",
+          "title": "齐次马氏链定义",
+          "content": "一阶马氏性：P(x_n | x_{n-1},…) = P(x_n | x_{n-1})；齐次性：转移概率 p_{ij} 与时间无关（p.38）。",
+          "relatedNodeId": null,
+          "children": []
+        },
+        {
+          "id": "node_04_2",
+          "title": "转移矩阵与Kolmogorov-Chapman方程",
+          "content": "转移矩阵 P = [p_{ij}]（p.39）；k步转移：P^{(k)} = P^k（p.43）；k步后分布：p^{(k)} = p^{(0)} P^k（p.44）。",
+          "relatedNodeId": null,
+          "children": []
+        },
+        {
+          "id": "node_04_3",
+          "title": "平稳分布 π",
+          "content": "满足 π^T = π^T P 且 ∑π_i = 1（p.46）；存在唯一平稳分布的条件：有限、不可约、非周期（p.48 思考题）。",
+          "relatedNodeId": "node_05_2",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_05",
+      "title": "马尔可夫信源",
+      "content": "将马氏链转化为输出信源，通过状态映射处理 m 阶记忆，并计算其极限熵 H∞。",
+      "relatedNodeId": null,
+      "children": [
+        {
+          "id": "node_05_1",
+          "title": "m阶马氏信源 → 一阶状态马氏链",
+          "content": "状态定义为 s_n = (x_{n-m},…,x_{n-1})，将 m 阶信源转化为一阶状态马氏链（p.54）。",
+          "relatedNodeId": null,
+          "children": []
+        },
+        {
+          "id": "node_05_2",
+          "title": "平稳分布用于熵计算",
+          "content": "先求状态平稳分布 π（如 p.68 例3.13续中 π = [5/14, 1/7, 1/7, 5/14]），再用于加权平均熵（p.67）。",
+          "relatedNodeId": "node_04_3",
+          "children": []
+        },
+        {
+          "id": "node_05_3",
+          "title": "定理3.7：马氏信源极限熵公式",
+          "content": "\\[\nH_\\infty = \\sum_{i=1}^J \\pi_i H(X | s=i)\n\\]\n其中 H(X|s=i) = -∑_k p(k|i) log p(k|i)（p.67）。这是**计算 H∞ 的通用方法**。",
+          "relatedNodeId": "node_03_3",
+          "children": [
+            {
+              "id": "node_05_3_1",
+              "title": "特例：状态→唯一输出（方法1）",
+              "content": "若每个状态转移对应唯一输出，则 H∞ = π^T h，h_i = H(X|s=i)（p.62）。",
+              "relatedNodeId": "node_05_3",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "node_05_4",
+          "title": "典型例题计算路径",
+          "content": "p.68 例3.13续：\n1. 由 P 求 π（p.67）；\n2. 计算各状态 H(X|s=i)（如 h₁ = -0.8 log0.8 - 0.2 log0.2）；\n3. 加权平均得 H∞ = 0.801 bit/符号。\n\np.70 小球跳动例：同样流程，得 H∞ = 1.2 bit/符号。",
+          "relatedNodeId": "node_05_3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_06",
+      "title": "信源的相关性与剩余度",
+      "content": "利用 H∞ 与最大熵 H₀ 的比值定义效率与冗余度，量化自然语言的信息效率。",
+      "relatedNodeId": null,
+      "children": [
+        {
+          "id": "node_06_1",
+          "title": "熵序列与相关性",
+          "content": "H₀ ≥ H₁ ≥ H₂ ≥ … ≥ H∞，其中：\n- H₀ = log m（独立等概）\n- H₁ = H(X)（独立但不等概）\n- H₂ = H(X₂|X₁)（一阶记忆）\n- H∞ = 极限条件熵（p.74）",
+          "relatedNodeId": null,
+          "children": []
+        },
+        {
+          "id": "node_06_2",
+          "title": "剩余度定义",
+          "content": "信源效率：η = H∞ / H₀；\n剩余度（冗余度）：γ = 1 - H∞ / H₀（p.75）。\n**此公式完全依赖 H∞ 的数值**。",
+          "relatedNodeId": "node_05_3",
+          "children": []
+        },
+        {
+          "id": "node_06_3",
+          "title": "自然语言剩余度计算",
+          "content": "英文（p.76）：H₀ = log₂27 ≈ 4.75，H∞ ≈ 1.4 ⇒ γ ≈ 0.71；\n中文（p.77）：H₀ = log₂7600 ≈ 12.9，H∞ ≈ 4.0（来自 p.71 N-gram 收敛）⇒ γ ≈ 0.69。\n**H∞ 数值来自 node_05_4 或 p.71 的 N-gram 实验**。",
+          "relatedNodeId": "node_05_4",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

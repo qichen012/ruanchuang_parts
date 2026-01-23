@@ -1,0 +1,106 @@
+{
+  "id": "root_01",
+  "title": "机器学习原理",
+  "content": "本章系统阐述监督与无监督学习的基本范式，聚焦四大经典分类算法（KNN、决策树、贝叶斯、SVM）及其评估方法，知识结构呈现“问题定义→算法机制→实例推演→评估验证”的非线性依赖网络，尤其在决策树部分形成严密的公式-例题-递归构建闭环。",
+  "children": [
+    {
+      "id": "child_01",
+      "title": "机器学习基本范式",
+      "content": "PDF P1–P3：ML是让计算机从数据中学习映射规律的方法，分为监督学习（带标签，如分类/回归）和无监督学习（无标签，如聚类/降维）。核心任务包括分类、回归、聚类、协同过滤、降维。",
+      "relatedNodeId": null,
+      "children": []
+    },
+    {
+      "id": "child_02",
+      "title": "分类问题的形式化定义",
+      "content": "PDF P4：给定训练集 {(x_i, y_i)}，学习分类器 f(x) 以预测新样本标签。强调“属性向量 x”与“类别标签 y”的对应关系，是所有监督算法的共同输入输出框架。",
+      "relatedNodeId": "child_01",
+      "children": []
+    },
+    {
+      "id": "child_03",
+      "title": "KNN算法原理与流程",
+      "content": "PDF P9–P11：基于距离度量（如欧氏距离），选取k个最近邻，按多数投票决定类别。流程包括：计算距离→排序→选k→统计频率→决策。其性能依赖数据分布均衡性与距离度量选择。",
+      "relatedNodeId": "child_02",
+      "children": []
+    },
+    {
+      "id": "child_04",
+      "title": "决策树基础：信息熵与信息增益",
+      "content": "PDF P15–P16：信息熵 Ent(S) = -Σ p_i log₂ p_i 衡量不确定性；信息增益 Gain(S, A) = Ent(S) - Σ (|S_v|/|S|) Ent(S_v) 衡量属性A对S的划分能力。**这是决策树分裂准则的核心数学工具**。",
+      "relatedNodeId": "child_02",
+      "children": []
+    },
+    {
+      "id": "child_05",
+      "title": "ID3决策树构建流程",
+      "content": "PDF P17：自顶向下递归构建：① 计算各属性信息增益；② 选最大者作为分裂节点；③ 对子集重复直至纯节点。该流程依赖 child_04 的信息增益定义。",
+      "relatedNodeId": "child_04",
+      "children": []
+    },
+    {
+      "id": "child_06",
+      "title": "决策树天气打球例题（根节点选择）",
+      "content": "PDF P19–P22：计算初始熵 Ent(S)=0.940（P19）；分别计算 outlook/temperature/humidity/wind 的信息增益（P21–P22），其中 outlook 增益最大（0.247），故选为根。**此计算直接调用 child_04 的公式**。",
+      "relatedNodeId": "child_04",
+      "children": []
+    },
+    {
+      "id": "child_07",
+      "title": "决策树递归构建（子节点分裂）",
+      "content": "PDF P23–P24：对 S_sunny 子集，重新计算 temperature/humidity/wind 的信息增益（Gain=0.570/0.970/0.019），选 humidity（最大）继续分裂。**此步骤复用 child_05 的流程与 child_04 的公式**，体现递归结构。",
+      "relatedNodeId": "child_05",
+      "children": []
+    },
+    {
+      "id": "child_08",
+      "title": "从决策树到随机森林",
+      "content": "PDF P25–P30：通过 Bootstrap 采样 + 随机特征子集 + 多树集成，降低方差、提升泛化。每棵树独立训练，最终投票集成。**其基础单元仍是 child_05 的决策树**。",
+      "relatedNodeId": "child_05",
+      "children": []
+    },
+    {
+      "id": "child_09",
+      "title": "朴素贝叶斯分类原理",
+      "content": "PDF P32–P33：基于贝叶斯定理 P(C|X) ∝ P(X|C)P(C)，假设属性条件独立，将联合概率分解为乘积。**依赖概率论基础，但不依赖其他算法**。",
+      "relatedNodeId": "child_02",
+      "children": [
+        {
+          "id": "child_09a",
+          "title": "贝叶斯天气例题计算",
+          "content": "PDF P34–P36：对 X=(Sunny, Hot, Normal, Weak)，计算 P(X|Yes)P(Yes) 与 P(X|No)P(No)，比较大小得分类结果。**计算过程严格遵循 child_09 的独立性假设与贝叶斯公式**。",
+          "relatedNodeId": "child_09",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "child_10",
+      "title": "支持向量机（SVM）核心思想",
+      "content": "PDF P38–P40：寻找最大间隔超平面，使几何间隔 2/||w|| 最大。引入松弛变量 ξ_i 与惩罚项 C 处理线性不可分，目标函数为 min ½||w||² + CΣξ_i。**此为凸优化问题，依赖拉格朗日对偶**（PDF未展开）。",
+      "relatedNodeId": "child_02",
+      "children": []
+    },
+    {
+      "id": "child_11",
+      "title": "核技巧与非线性SVM",
+      "content": "PDF P41–P42：通过核函数 φ(x) 将输入映射至高维空间，使原线性不可分问题可分。典型如多项式核、RBF核。**此机制扩展了 child_10 的线性模型**。",
+      "relatedNodeId": "child_10",
+      "children": []
+    },
+    {
+      "id": "child_12",
+      "title": "SVM多分类策略",
+      "content": "PDF P43–P45：OvR（一对余）与 OvO（一对一）两种策略。OvR训练K个二分类器，OvO训练 K(K-1)/2 个。**均建立在 child_10 的二分类SVM基础上**。",
+      "relatedNodeId": "child_10",
+      "children": []
+    },
+    {
+      "id": "child_13",
+      "title": "分类评估指标体系",
+      "content": "PDF P47–P53：定义 TP/FN/FP/TN 四类结果；导出 Accuracy、Precision、Recall；引出 PR曲线、F1、ROC曲线、AUC。**评估方法适用于所有分类算法（child_03, child_05, child_09, child_10）**，构成横向通用评价层。",
+      "relatedNodeId": null,
+      "children": []
+    }
+  ]
+}

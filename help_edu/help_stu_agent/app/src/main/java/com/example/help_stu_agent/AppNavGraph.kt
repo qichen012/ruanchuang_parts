@@ -23,8 +23,14 @@ fun AppNavGraph(
                         launchSingleTop = true
                     }
                 },
+                onGoKnowledgeTree = {
+                    navController.navigate(AppRoutes.KnowledgeTree) {
+                        launchSingleTop = true
+                    }
+                }
             )
         }
+
 
         composable(AppRoutes.Upload) {
             PdfUploadPage(

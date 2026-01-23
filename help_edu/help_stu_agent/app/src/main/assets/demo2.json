@@ -1,0 +1,101 @@
+{
+  "id": "root_01",
+  "title": "深度学习基础",
+  "content": "本章系统阐述深度学习的理论起源、神经网络演化脉络、基本组成单元（人工神经元）、激活函数特性、多层网络结构及其空间变换能力，知识呈现明显的非线性依赖：历史演进为动机背景，数学建模为抽象核心，激活函数与层间关系构成可训练性的基础。",
+  "children": [
+    {
+      "id": "child_01",
+      "title": "深度学习的定义与机理",
+      "content": "PDF P2–P3：深度学习是通过组合底层特征形成更抽象高层表示的表示学习方法，其核心结构是含多隐藏层的人工神经网络，目标是发现数据的分布式特征表示。应用涵盖语音、图像、文本等。",
+      "relatedNodeId": null,
+      "children": []
+    },
+    {
+      "id": "child_02",
+      "title": "人工神经网络发展史（四阶段）",
+      "content": "PDF P4–P10：(1) 1943 MP模型（首次抽象神经元）；(2) 1958 感知器（单层线性分类）；(3) 1969 冰河期（Minsky指出XOR不可解）；(4) 1986 BP算法（解决多层训练）；(5) 2006 Hinton提出DBN+预训练，开启深度学习时代。",
+      "relatedNodeId": "child_01",
+      "children": []
+    },
+    {
+      "id": "child_03",
+      "title": "生物神经元与人工神经元类比",
+      "content": "PDF P3：生物神经元具单向、延时、阈值特性；人工神经元模拟此机制，实现输入加权求和 + 非线性激活 → 输出。",
+      "relatedNodeId": "child_04",
+      "children": []
+    },
+    {
+      "id": "child_04",
+      "title": "基本人工神经元数学模型",
+      "content": "PDF P12–P13：z = w₁x₁ + … + wₙxₙ + b；y = σ(z)。其中σ为激活函数，引入非线性，使网络可逼近任意函数。",
+      "relatedNodeId": "child_05",
+      "children": []
+    },
+    {
+      "id": "child_05",
+      "title": "激活函数的作用与必要性",
+      "content": "PDF P14：激活函数将非线性引入网络，使其具备拟合非线性函数的能力；若无激活函数，多层网络退化为单层线性变换。",
+      "relatedNodeId": "child_06",
+      "children": []
+    },
+    {
+      "id": "child_06",
+      "title": "常见激活函数及其特性",
+      "content": "PDF P15–P21：包括Sigmoid（饱和、非零中心）、Tanh（零中心但饱和）、ReLU（快但死亡）、Leaky-ReLU（缓解死亡）、ELU（鲁棒）、Maxout（通用但参数多）。选择影响梯度流、收敛速度与表达能力。",
+      "relatedNodeId": "child_04",
+      "children": [
+        {
+          "id": "child_06a",
+          "title": "激活函数对反向传播的影响",
+          "content": "PDF P15：要求几乎处处可导，以便计算梯度；饱和函数（如Sigmoid）导致梯度消失，阻碍深层训练。",
+          "relatedNodeId": "child_06",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "child_07",
+      "title": "神经网络三层结构",
+      "content": "PDF P22：输入层、隐藏层、输出层。隐藏层可多层堆叠，构成“深度”网络。",
+      "relatedNodeId": "child_08",
+      "children": []
+    },
+    {
+      "id": "child_08",
+      "title": "神经网络符号体系与层间关系",
+      "content": "PDF P23–P27：定义 aˡ（l层输出）、Wˡ（权重矩阵）、bˡ（偏置）、zˡ（激活前输入）；满足 zˡ = Wˡ aˡ⁻¹ + bˡ，aˡ = σ(zˡ)。此递推关系是前向传播的基础。",
+      "relatedNodeId": "child_04",
+      "children": [
+        {
+          "id": "child_08a",
+          "title": "第27页神经网络结构图的依赖",
+          "content": "PDF P27 的多层连接图直观展示 Wˡ 与 aˡ 的传递关系，其可理解性依赖于 P23–P26 的符号定义及 P14–P21 的激活函数概念——若无σ，该图仅表示线性链。",
+          "relatedNodeId": "child_06",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "child_09",
+      "title": "每层的几何意义：空间变换",
+      "content": "PDF P32：每层执行“线性变换（W, b） + 非线性扭曲（σ）”，将输入空间映射到新空间；多层叠加可将原始非线性可分问题（如环形数据）扭曲为线性可分。",
+      "relatedNodeId": "child_05",
+      "children": [
+        {
+          "id": "child_09a",
+          "title": "非线性激活是空间扭曲的关键",
+          "content": "若仅用线性变换（无σ），无论多少层，整体仍为线性映射，无法解决XOR或环形分类问题；σ提供‘弯曲’能力，使深层网络具有强大表达力。",
+          "relatedNodeId": "child_05",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "child_10",
+      "title": "深度学习 vs 传统机器学习",
+      "content": "PDF P2, P10：传统方法（如SVM、Boosting）依赖人工特征工程；深度学习通过端到端训练自动学习层次化特征表示，减少人为干预，适用于高维复杂数据。",
+      "relatedNodeId": "child_01",
+      "children": []
+    }
+  ]
+}

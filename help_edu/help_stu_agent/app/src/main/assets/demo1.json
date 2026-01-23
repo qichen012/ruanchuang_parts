@@ -1,0 +1,94 @@
+{
+  "id": "root_01",
+  "title": "HDFS分布式文件系统",
+  "content": "HDFS是为在廉价硬件集群上可靠、高效地存储海量大文件而设计的分布式文件系统，核心围绕高容错、高吞吐、顺序读写展开，其知识结构呈现非线性依赖与多机制复用特征。",
+  "children": [
+    {
+      "id": "child_01",
+      "title": "设计动因与环境约束",
+      "content": "HDFS诞生于对海量日志型数据（≥100MB–GB级）的存储需求；运行于由低成本PC组成的高故障率集群；强调顺序读写、写后不改（WORM）；目标是高吞吐而非低延迟。",
+      "relatedNodeId": null,
+      "children": []
+    },
+    {
+      "id": "child_02",
+      "title": "三角色架构模型",
+      "content": "Client（调用API、与NN/DN交互）、NameNode（唯一元数据管理者，维护命名空间与块位置映射）、DataNode（实际数据存储节点，定期上报块信息）。三者构成系统骨架，所有机制均以此为基础。",
+      "relatedNodeId": null,
+      "children": []
+    },
+    {
+      "id": "child_03",
+      "title": "机架感知（Rack Awareness）",
+      "content": "通过抽象化物理拓扑（机架内快、跨机架慢），优化数据放置与访问路径。写入时决定副本分布（如1本地+1同机架+1跨机架）；读取时按网络距离排序DN列表，优先就近读取。",
+      "relatedNodeId": null,
+      "children": [
+        {
+          "id": "child_03a",
+          "title": "机架感知在写入中的应用",
+          "content": "PDF P15–P16：基于机架拓扑选择最优DN组合，最大化带宽、最小化跨机架流量。",
+          "relatedNodeId": "child_03b",
+          "children": []
+        },
+        {
+          "id": "child_03b",
+          "title": "机架感知在读取中的应用",
+          "content": "PDF P30：NN返回按距离排序的DN列表，Client优先从最近节点读取，提升吞吐并降低网络负载。",
+          "relatedNodeId": "child_03a",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "child_04",
+      "title": "数据写入流程",
+      "content": "包含四个阶段：(1) 文件分块（P11）；(2) DN分配（P12–P16，依赖机架感知）；(3) 流水线写入（P17）；(4) 完成确认（P24）。整个过程隐含强状态依赖：必须先完成块分配才能写入，写入成功后NN才更新元数据。",
+      "relatedNodeId": "child_05",
+      "children": [
+        {
+          "id": "child_04a",
+          "title": "写入中容错机制",
+          "content": "PDF P22：若DN故障，Client重建管道，重选DN继续写入；依赖心跳/校验和检测错误（P19–P21）。",
+          "relatedNodeId": "child_04b",
+          "children": []
+        },
+        {
+          "id": "child_04b",
+          "title": "写入后容错机制",
+          "content": "PDF P23：NN周期性检查副本数，若不足则触发再复制，确保持久性。",
+          "relatedNodeId": "child_04a",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "child_05",
+      "title": "数据读取流程",
+      "content": "PDF P28–P31：Client先向NN查询块位置（依赖child_02中NN的元数据管理）；NN返回按机架距离排序的DN列表（复用child_03）；Client从首选DN读取，失败则尝试下一节点（P31）。",
+      "relatedNodeId": "child_04",
+      "children": []
+    },
+    {
+      "id": "child_06",
+      "title": "NameNode元数据可靠性机制",
+      "content": "PDF P25–P26：采用FsImage（全量快照） + EditLog（增量日志）组合。启动时合并两者重建内存状态；定期checkpoint（由fs.checkpoint.size或fs.checkpoint.period触发）避免EditLog过长。此机制解决NN单点故障中的元数据持久化问题，但未实现高可用（HA）。",
+      "relatedNodeId": "child_02",
+      "children": []
+    },
+    {
+      "id": "child_07",
+      "title": "错误监测三维度",
+      "content": "PDF P19–P21：(1) 节点错误 → 心跳超时；(2) 网络错误 → TCP超时/重传；(3) 存储错误 → 校验和验证。这三类监测是所有容错机制（child_04a, child_04b, child_05）的前提，构成底层共性支撑。",
+      "relatedNodeId": null,
+      "children": [
+        {
+          "id": "child_07a",
+          "title": "校验和在写入与读取中的复用",
+          "content": "写入时生成校验和（P21），读取时验证（P31隐含），形成端到端数据完整性保障。",
+          "relatedNodeId": "child_07",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

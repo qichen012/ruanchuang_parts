@@ -35,3 +35,27 @@ val OnSurfaceVariantDark = Color(0xFFB6BECE)
 
 val OutlineDark = Color(0xFF2A3550)
 val OutlineVariantDark = Color(0xFF324062)
+
+/**
+ * 分支色调色板（用于“一级子树”区分）
+ * 设计原则：低饱和/偏中性，不抢主色；用于强调条/边框/glow 小面积点缀
+ */
+val BranchPaletteLight: List<Color> = listOf(
+    Color(0xFF3F51B5), // Indigo（接近主色）
+    Color(0xFF0F766E), // Teal
+    Color(0xFF7C3AED), // Violet
+    Color(0xFFB45309), // Amber/Brown
+    Color(0xFFBE123C), // Rose
+    Color(0xFF2563EB), // Blue
+    Color(0xFF15803D)  // Green
+)
+
+val BranchPaletteDark: List<Color> = listOf(
+    Color(0xFFB9C2FF), // Indigo light
+    Color(0xFF5EEAD4), // Teal light
+    Color(0xFFC4B5FD), // Violet light
+    Color(0xFFFCD34D), // Amber light
+    Color(0xFFFDA4AF), // Rose light
+    Color(0xFF93C5FD), // Blue light
+    Color(0xFF86EFAC)  // Green light
+)

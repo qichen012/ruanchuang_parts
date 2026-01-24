@@ -1,10 +1,15 @@
 package com.example.help_stu_agent
 
+import android.R.attr.type
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import com.example.help_stu_agent.ui.card.KnowledgeCardDetailPage
+import com.example.help_stu_agent.ui.tree.KnowledgeTreeHistoryPage
 
 @Composable
 fun AppNavGraph(
@@ -23,8 +28,13 @@ fun AppNavGraph(
                         launchSingleTop = true
                     }
                 },
-                onGoKnowledgeTree = {
-                    navController.navigate(AppRoutes.KnowledgeTree) {
+                onGoKnowledgeTreeHistory = {
+                    navController.navigate(AppRoutes.KnowledgeTreeHistory) {
+                        launchSingleTop = true
+                    }
+                },
+                onOpenKnowledgeCard = { cardId ->
+                    navController.navigate(AppRoutes.knowledgeCardDetail(cardId)) {
                         launchSingleTop = true
                     }
                 }
@@ -47,5 +57,28 @@ fun AppNavGraph(
         composable(AppRoutes.KnowledgeTree) {
             KnowledgeTreePageFromCache()
         }
+
+        composable(AppRoutes.KnowledgeTreeHistory) {
+            KnowledgeTreeHistoryPage(
+                onOpen = {
+                    navController.navigate(AppRoutes.KnowledgeTree) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = AppRoutes.KnowledgeCardDetail,
+            arguments = listOf(navArgument("cardId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val cardId = backStackEntry.arguments?.getString("cardId").orEmpty()
+            KnowledgeCardDetailPage(
+                cardId = cardId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+
     }
 }

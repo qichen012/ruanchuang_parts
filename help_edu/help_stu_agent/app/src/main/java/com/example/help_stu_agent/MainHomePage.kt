@@ -10,15 +10,16 @@ import com.example.help_stu_agent.ui.home.HomePage
 @Composable
 fun MainHomePage(
     onGoUpload: () -> Unit,
-    onGoKnowledgeTree: () -> Unit
+    onGoKnowledgeTreeHistory: () -> Unit,
+    onOpenKnowledgeCard: (String) -> Unit,
 ) {
     val drawerOpen = remember { mutableStateOf(false) }
 
     // 你的主页
     HomePage(
         onMenuClick = { drawerOpen.value = true },
-        onRightActionClick = { /* 你可以后续接 History/Notes */ },
-        onGoUploadPdf = onGoUpload
+        onGoUploadPdf = onGoUpload,
+        onOpenKnowledgeCard = onOpenKnowledgeCard,
     )
 
 
@@ -28,7 +29,7 @@ fun MainHomePage(
         onAction = { action ->
             when (action) {
                 HomeDrawerAction.DailyReport -> { /* TODO */ }
-                HomeDrawerAction.KnowledgeStructure -> onGoKnowledgeTree()
+                HomeDrawerAction.KnowledgeStructure -> onGoKnowledgeTreeHistory()
                 HomeDrawerAction.SparkyLink -> { /* TODO */ }
                 HomeDrawerAction.EliteIdeas -> { /* TODO */ }
                 HomeDrawerAction.MyAccount -> { /* TODO */ }

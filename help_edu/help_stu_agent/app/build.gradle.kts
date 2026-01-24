@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     kotlin("plugin.serialization")
+    id ("kotlin-kapt")
 }
 
 val localProperties = Properties()
@@ -30,6 +31,12 @@ android {
 
         val key = localProperties.getProperty("DEEPSEEK_API_KEY") ?: ""
         buildConfigField("String", "DEEPSEEK_API_KEY", "\"$key\"")
+
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments["room.schemaLocation"] = "$projectDir/schemas"
+            }
+        }
     }
 
     buildTypes {
@@ -86,7 +93,9 @@ dependencies {
     implementation("org.commonmark:commonmark-ext-task-list-items:0.22.0")
     implementation(libs.androidx.navigation.compose)
 
-
+    implementation ("androidx.room:room-runtime:2.6.1")
+    kapt ("androidx.room:room-compiler:2.6.1")
+    implementation ("androidx.room:room-ktx:2.6.1")
 
 }
 

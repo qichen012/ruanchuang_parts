@@ -39,9 +39,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.help_stu_agent.data.repo.KnowledgeCardRepository
+import com.example.help_stu_agent.data.repo.KnowledgeTreeRepository
 import com.example.help_stu_agent.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.sin
 
 
@@ -116,6 +119,8 @@ fun PdfUploadPage(
 ) {
     val c = rememberAppPalette()
     val context = LocalContext.current
+    val treeRepo = remember { KnowledgeTreeRepository(context) }
+    val cardRepo = remember { KnowledgeCardRepository(context) }
     val scope = rememberCoroutineScope()
 
     var pdfUri by remember { mutableStateOf<Uri?>(null) }
@@ -171,18 +176,56 @@ fun PdfUploadPage(
 
         scope.launch {
             try {
-                // 运行整条后端管线（上传->处理->取json）
-                PdfBackendPipeline.runPipeline(
+
+                // 1) 跑知识树管线
+                val treeJson = PdfBackendPipeline.runPipeline(
                     context = context,
                     pdfUri = uri,
                     onUpdate = { up ->
                         stage = up.stage
-                        progress = up.progress01
+                        // 避免后续第二条管线把进度“拉回去”
+                        progress = max(progress, up.progress01)
                         statusText = up.statusText
                     }
                 )
-                // 结果已在 PdfTreeCache.latestJson 中
-                // stage/progress/statusText 已被更新为 Done
+
+                // 2) 跑知识卡片管线（你已实现 runCardPipeline）
+                val cardJson = PdfBackendPipeline.runCardPipeline(
+                    context = context,
+                    pdfUri = uri,
+                    onUpdate = { up ->
+                        stage = up.stage
+                        progress = max(progress, up.progress01)
+                        statusText = up.statusText
+                    }
+                )
+
+                // 3) 两者都成功后写入 Room
+                var latestTreeId: String? = null
+                var latestCardId: String? = null
+
+                if (!treeJson.isNullOrBlank()) {
+                    latestTreeId = treeRepo.saveNewTree(
+                        pdfDisplayName = pdfName ?: "知识树",
+                        pdfUri = pdfUri?.toString(),
+                        title = null,
+                        jsonString = treeJson
+                    )
+                }
+
+                if (!cardJson.isNullOrBlank()) {
+                    latestCardId = cardRepo.saveNewCard(
+                        pdfDisplayName = pdfName ?: "知识卡片",
+                        pdfUri = pdfUri?.toString(),
+                        rawJson = cardJson
+                    )
+                }
+
+                // 4) UI 进入 Done（如果 pipeline 已经把 stage 推到 Done，这里可不写）
+                stage = PdfStage.Done
+                progress = 1f
+                statusText = "解析完成，已保存到本地"
+
             } catch (e: Exception) {
                 stage = PdfStage.Error
                 progress = 0f

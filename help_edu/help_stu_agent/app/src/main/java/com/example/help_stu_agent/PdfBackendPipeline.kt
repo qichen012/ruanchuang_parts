@@ -20,6 +20,10 @@ object PdfTreeCache {
     @Volatile var latestJson: String? = null
     @Volatile var latestJobId: String? = null
 }
+object PdfCardCache {
+    @Volatile var latestCardJson: String? = null
+}
+
 
 data class PdfJobStatus(
     val jobId: String,
@@ -41,6 +45,8 @@ object PdfBackendPipeline {
      * 真机访问电脑：改成 http://<电脑局域网IP>:8000
      */
     const val BASE_URL = "http://10.0.2.2:8000"
+    const val CARD_BASE_URL = "http://10.29.142.138:8001"
+
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)
@@ -85,7 +91,51 @@ object PdfBackendPipeline {
 
         PdfTreeCache.latestJson = json
         onUpdate(PdfUiUpdate(PdfStage.Done, 1f, "处理完成，可进入知识树"))
+
+
         return@withContext json
+    }
+
+    suspend fun runCardPipeline(
+        context: Context,
+        pdfUri: Uri,
+        onUpdate: (PdfUiUpdate) -> Unit
+    ): String = withContext(Dispatchers.IO) {
+
+        onUpdate(PdfUiUpdate(PdfStage.Uploading, 0f, "上传中…"))
+
+        val bytes = context.contentResolver.openInputStream(pdfUri)
+            ?.use { it.readBytes() }
+            ?: throw RuntimeException("无法读取PDF：$pdfUri")
+
+        val body = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart(
+                "file",
+                "upload.pdf",
+                bytes.toRequestBody("application/pdf".toMediaType())
+            )
+            .build()
+
+        onUpdate(PdfUiUpdate(PdfStage.Processing, 0.3f, "服务端解析中…"))
+
+        val req = Request.Builder()
+            .url("${CARD_BASE_URL}/process_pdf")
+            .post(body)
+            .build()
+
+        http.newCall(req).execute().use { resp ->
+            val respStr = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) {
+                onUpdate(PdfUiUpdate(PdfStage.Error, 0f, "处理失败：HTTP ${resp.code}"))
+                throw RuntimeException("处理失败：HTTP ${resp.code}\n$respStr")
+            }
+
+            // 这里就是你给的 {meta, header, body, footer} 原始JSON
+            PdfCardCache.latestCardJson = respStr
+            onUpdate(PdfUiUpdate(PdfStage.Done, 1f, "处理完成，已生成知识卡片"))
+            return@withContext respStr
+        }
     }
 
     private fun uploadCreateJob(context: Context, pdfUri: Uri): String {
@@ -164,3 +214,5 @@ object PdfBackendPipeline {
         }
     }
 }
+
+

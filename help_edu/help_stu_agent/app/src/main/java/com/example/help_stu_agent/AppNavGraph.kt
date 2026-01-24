@@ -1,6 +1,5 @@
 package com.example.help_stu_agent
 
-import android.R.attr.type
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -9,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.help_stu_agent.ui.card.KnowledgeCardDetailPage
+import com.example.help_stu_agent.ui.report.DailyReportPage
 import com.example.help_stu_agent.ui.tree.KnowledgeTreeHistoryPage
 
 @Composable
@@ -30,6 +30,11 @@ fun AppNavGraph(
                 },
                 onGoKnowledgeTreeHistory = {
                     navController.navigate(AppRoutes.KnowledgeTreeHistory) {
+                        launchSingleTop = true
+                    }
+                },
+                onGoDailyReport = {
+                    navController.navigate(AppRoutes.DailyReport) {
                         launchSingleTop = true
                     }
                 },
@@ -68,6 +73,16 @@ fun AppNavGraph(
             )
         }
 
+        composable(AppRoutes.DailyReport) {
+            DailyReportPage(
+                onBack = { navController.popBackStack() },
+                onOpenKnowledgeCard = { cardId ->
+                    navController.navigate(AppRoutes.knowledgeCardDetail(cardId)) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
         composable(
             route = AppRoutes.KnowledgeCardDetail,
             arguments = listOf(navArgument("cardId") { type = NavType.StringType })

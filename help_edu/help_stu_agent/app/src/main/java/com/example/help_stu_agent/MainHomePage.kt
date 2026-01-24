@@ -11,6 +11,7 @@ import com.example.help_stu_agent.ui.home.HomePage
 fun MainHomePage(
     onGoUpload: () -> Unit,
     onGoKnowledgeTreeHistory: () -> Unit,
+    onGoDailyReport: () -> Unit,
     onOpenKnowledgeCard: (String) -> Unit,
 ) {
     val drawerOpen = remember { mutableStateOf(false) }
@@ -28,7 +29,7 @@ fun MainHomePage(
         onDismiss = { drawerOpen.value = false },
         onAction = { action ->
             when (action) {
-                HomeDrawerAction.DailyReport -> { /* TODO */ }
+                HomeDrawerAction.DailyReport -> onGoDailyReport()
                 HomeDrawerAction.KnowledgeStructure -> onGoKnowledgeTreeHistory()
                 HomeDrawerAction.SparkyLink -> { /* TODO */ }
                 HomeDrawerAction.EliteIdeas -> { /* TODO */ }

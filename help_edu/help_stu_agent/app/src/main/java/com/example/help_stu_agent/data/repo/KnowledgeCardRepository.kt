@@ -29,10 +29,12 @@ class KnowledgeCardRepository(context: Context) {
         val now = System.currentTimeMillis()
         val id = UUID.randomUUID().toString()
 
-        val parsed = runCatching { Json.parseToJsonElement(rawJson).jsonObject }.getOrNull()
+        val root = runCatching { Json.parseToJsonElement(rawJson).jsonObject }.getOrNull()
+
+        val dataNode = root?.get("data")?.jsonObject ?: root
 
         fun getStr(path1: String, path2: String): String? {
-            val o1 = parsed?.get(path1)?.jsonObject ?: return null
+            val o1 = dataNode?.get(path1)?.jsonObject ?: return null
             return o1[path2]?.jsonPrimitive?.contentOrNull
         }
 
@@ -54,7 +56,6 @@ class KnowledgeCardRepository(context: Context) {
             footerQuote = footerQuote,
             rawJson = rawJson
         )
-
         dao.upsert(entity)
         return id
     }

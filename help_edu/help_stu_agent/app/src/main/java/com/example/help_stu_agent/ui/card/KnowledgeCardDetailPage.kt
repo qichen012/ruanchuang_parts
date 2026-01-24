@@ -1,28 +1,52 @@
 package com.example.help_stu_agent.ui.card
 
+import android.util.Log
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Subject
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.help_stu_agent.data.repo.KnowledgeCardRepository
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.util.Locale
+
+// 只保留详情页需要展示的字段：summary + keyPoints
+private data class KeyPointItem(
+    val icon: String = "•",
+    val content: String,
+    val title: String? = null
+)
 
 private sealed class DetailState {
     data object Loading : DetailState()
     data class Error(val message: String) : DetailState()
     data class Ready(
         val title: String,
-        val subtitle: String?,
         val summary: String?,
-        val quote: String?,
-        val keyPoints: List<Pair<String, String>>,
-        val rawJsonPreview: String? = null
+        val keyPoints: List<KeyPointItem>
     ) : DetailState()
 }
 
@@ -34,187 +58,197 @@ fun KnowledgeCardDetailPage(
 ) {
     val context = LocalContext.current
     val repo = remember { KnowledgeCardRepository(context) }
-
     var state by remember { mutableStateOf<DetailState>(DetailState.Loading) }
 
     LaunchedEffect(cardId) {
         state = DetailState.Loading
+        val entity = repo.getById(cardId) ?: return@LaunchedEffect
 
-        if (cardId.isBlank()) {
-            state = DetailState.Error("cardId 为空，无法加载详情。")
-            return@LaunchedEffect
-        }
+        // 1. 解析原始 JSON
+        val root = runCatching { Json.parseToJsonElement(entity.rawJson).jsonObject }.getOrNull()
 
-        val entity = repo.getById(cardId)
-        if (entity == null) {
-            state = DetailState.Error("未在本地数据库中找到该卡片（id=$cardId）。请确认点击时传入的是 Room 记录的 UUID 字符串。")
-            return@LaunchedEffect
-        }
+        // 2. 核心修改：定位到 data 节点
+        val dataObj = root?.get("data")?.jsonObject ?: root
 
-        val parsedObj = runCatching { Json.parseToJsonElement(entity.rawJson).jsonObject }.getOrNull()
-        if (parsedObj == null) {
-            state = DetailState.Error("rawJson 解析失败：不是合法 JSON。建议打印 entity.rawJson 检查后端返回。")
-            return@LaunchedEffect
-        }
+        // 3. 从 dataObj 提取 body
+        val body = dataObj?.get("body")?.jsonObject
 
-        fun getStr(o: JsonObject, p1: String, p2: String): String? {
-            val obj1 = o[p1]?.jsonObject ?: return null
-            return obj1[p2]?.jsonPrimitive?.contentOrNull
-        }
+        // 提取 Summary
+        val summary = body?.get("summary")?.jsonPrimitive?.contentOrNull
 
-        val title = getStr(parsedObj, "header", "title") ?: entity.headerTitle ?: "知识卡片"
-        val subtitle = getStr(parsedObj, "header", "subtitle") ?: entity.headerSubtitle
-        val quote = getStr(parsedObj, "footer", "quote") ?: entity.footerQuote
-        val summary = parsedObj["body"]?.jsonObject?.get("summary")?.jsonPrimitive?.contentOrNull
-
-        // 兼容 body.key_points 以及 body.keyPoints
-        val bodyObj = parsedObj["body"]?.jsonObject
-        val kpArr =
-            bodyObj?.get("key_points")?.jsonArray
-                ?: bodyObj?.get("keyPoints")?.jsonArray
-
-        val keyPoints = kpArr?.mapNotNull { el ->
+        // 提取 KeyPoints
+        val kpArray = body?.get("key_points")?.jsonArray
+        val keyPoints = kpArray?.mapNotNull { el ->
             val o = el.jsonObject
-            val icon = o["icon"]?.jsonPrimitive?.contentOrNull ?: ""
+            val icon = o["icon"]?.jsonPrimitive?.contentOrNull ?: "•"
             val text = o["text"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
-            icon to text
+            KeyPointItem(icon = icon, title = null, content = text)
         } ?: emptyList()
 
-        // 如果确实没解析到任何内容，给一个可视化提示，避免“空白”
-        if (subtitle.isNullOrBlank() && summary.isNullOrBlank() && quote.isNullOrBlank() && keyPoints.isEmpty()) {
-            state = DetailState.Ready(
-                title = title,
-                subtitle = null,
-                summary = null,
-                quote = null,
-                keyPoints = emptyList(),
-                rawJsonPreview = entity.rawJson.take(600)
-            )
-        } else {
-            state = DetailState.Ready(
-                title = title,
-                subtitle = subtitle,
-                summary = summary,
-                quote = quote,
-                keyPoints = keyPoints
-            )
-        }
+        state = DetailState.Ready(
+            title = entity.headerTitle ?: "知识详情",
+            summary = summary,
+            keyPoints = keyPoints
+        )
     }
 
-    val topTitle = when (val s = state) {
-        is DetailState.Ready -> s.title
-        else -> "知识卡片"
-    }
+    val topTitle = (state as? DetailState.Ready)?.title ?: "知识详情"
 
     Scaffold(
+        containerColor = Color(0xFFF8FAFC),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(topTitle) },
+                title = {
+                    Text(
+                        text = topTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color(0xFFF8FAFC)
+                )
             )
         }
     ) { padding ->
         when (val s = state) {
-            DetailState.Loading -> {
-                Box(
-                    Modifier
-                        .padding(padding)
-                        .fillMaxSize(),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
+            DetailState.Loading -> Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator() }
 
-            is DetailState.Error -> {
-                Column(
-                    Modifier
-                        .padding(padding)
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text("加载失败", style = MaterialTheme.typography.titleLarge)
-                    Text(s.message, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
+            is DetailState.Error -> Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) { Text(s.message) }
 
             is DetailState.Ready -> {
                 LazyColumn(
                     modifier = Modifier
                         .padding(padding)
                         .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    contentPadding = PaddingValues(bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(horizontal = 20.dp),
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 40.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    if (!s.subtitle.isNullOrBlank()) {
-                        item {
-                            Text(
-                                text = s.subtitle!!,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
 
+                    // Summary
                     if (!s.summary.isNullOrBlank()) {
                         item {
-                            ElevatedCard {
-                                Column(Modifier.padding(16.dp)) {
-                                    Text("Summary", style = MaterialTheme.typography.titleMedium)
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(s.summary!!, style = MaterialTheme.typography.bodyMedium)
-                                }
-                            }
-                        }
-                    }
-
-                    if (s.keyPoints.isNotEmpty()) {
-                        item { Text("Key Points", style = MaterialTheme.typography.titleMedium) }
-                        items(s.keyPoints) { (icon, text) ->
-                            ElevatedCard {
-                                Row(
-                                    modifier = Modifier.padding(16.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            Column {
+                                SectionHeader(title = "摘要 SUMMARY", icon = Icons.Default.Subject)
+                                Spacer(Modifier.height(12.dp))
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                                 ) {
-                                    Text(icon, style = MaterialTheme.typography.titleLarge)
-                                    Text(text, style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        text = s.summary,
+                                        modifier = Modifier.padding(20.dp),
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            lineHeight = 28.sp,
+                                            letterSpacing = 0.3.sp,
+                                            color = Color(0xFF334155)
+                                        )
+                                    )
                                 }
                             }
                         }
                     }
 
-                    if (!s.quote.isNullOrBlank()) {
+                    // Key Points
+                    if (s.keyPoints.isNotEmpty()) {
                         item {
-                            ElevatedCard {
-                                Column(Modifier.padding(16.dp)) {
-                                    Text("Quote", style = MaterialTheme.typography.titleMedium)
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(s.quote!!, style = MaterialTheme.typography.bodyMedium)
-                                }
-                            }
+                            SectionHeader(title = "要点 KEY POINTS", icon = Icons.Default.List)
                         }
-                    }
 
-                    // 兜底：什么都解析不到时展示 rawJson 预览，便于你定位后端返回结构是否一致
-                    if (!s.rawJsonPreview.isNullOrBlank()) {
-                        item {
-                            ElevatedCard {
-                                Column(Modifier.padding(16.dp)) {
-                                    Text("Raw JSON Preview", style = MaterialTheme.typography.titleMedium)
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(s.rawJsonPreview!!, style = MaterialTheme.typography.bodySmall)
-                                }
-                            }
+                        itemsIndexed(s.keyPoints) { index, kp ->
+                            KeyPointItemView(item = kp, index = index)
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(title: String, icon: ImageVector) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = title.uppercase(Locale.getDefault()),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+private fun KeyPointItemView(item: KeyPointItem, index: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White, RoundedCornerShape(12.dp))
+            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        // 左侧：icon 或序号
+        Box(
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .size(24.dp)
+                .background(Color(0xFFEFF6FF), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            val showIcon = item.icon.isNotBlank() && item.icon != "•"
+            Text(
+                text = if (showIcon) item.icon else "${index + 1}",
+                fontSize = 12.sp,
+                color = if (showIcon) Color(0xFF0F172A) else MaterialTheme.colorScheme.primary,
+                fontWeight = if (showIcon) FontWeight.Normal else FontWeight.Bold
+            )
+        }
+
+        Spacer(Modifier.width(16.dp))
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            if (!item.title.isNullOrBlank()) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B)
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+            Text(
+                text = item.content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF475569),
+                lineHeight = 24.sp
+            )
         }
     }
 }

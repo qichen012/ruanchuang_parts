@@ -51,6 +51,7 @@ import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import kotlin.math.sqrt
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import com.example.help_stu_agent.data.repo.KnowledgeCardRepository
 
 
@@ -59,10 +60,10 @@ enum class Screen { Home, Reading, PastContent }
 data class ReflectionItem(
     val id: String,
     val title: String,
-    val description: String,
     val quote: String,
     val iconColor: Color = Color(0xFF6366F1)
 )
+
 
 
 data class HomeClickCallbacks(
@@ -95,28 +96,25 @@ fun HomePage(
                 ReflectionItem(
                     id = e.id,
                     title = e.headerTitle ?: (e.pdfDisplayName ?: "知识卡片"),
-                    description = e.headerSubtitle ?: (e.category ?: ""),
                     quote = e.footerQuote ?: ""
                 )
+
             }
         } else {
             listOf(
                 ReflectionItem(
                     id = "demo_01",
                     title = "上传 PDF 生成知识卡片",
-                    description = "上传后将自动生成章节要点与关键知识点。",
                     quote = "从历史中回看你的知识结构。"
                 ),
                 ReflectionItem(
                     id = "demo_02",
                     title = "支持知识树结构化",
-                    description = "点击卡片进入详情，查看 key_points。",
                     quote = "结构化比堆材料更重要。"
                 ),
                 ReflectionItem(
                     id = "demo_03",
                     title = "自动保存为历史",
-                    description = "每次上传都会保存到 Room，随时回溯。",
                     quote = "让知识形成网络，而不是列表。"
                 )
             )
@@ -532,53 +530,66 @@ fun ReflectionCard(item: ReflectionItem, onClick: () -> Unit) {
             onClick = onClick,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(420.dp)
-                .shadow(10.dp, RoundedCornerShape(40.dp)),
+                .height(480.dp) // 稍微加高一点，留白更美观
+                .shadow(12.dp, RoundedCornerShape(40.dp)),
             shape = RoundedCornerShape(40.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(modifier = Modifier.padding(32.dp).fillMaxSize()) {
+                // 1. 顶部图标
                 Box(
                     modifier = Modifier
-                        .size(60.dp)
-                        .background(Color(0xFFEEF2FF), RoundedCornerShape(18.dp)),
+                        .size(64.dp)
+                        .background(Color(0xFFF1F5F9), RoundedCornerShape(20.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    SparklesIcon(modifier = Modifier.size(28.dp), color = item.iconColor)
+                    SparklesIcon(modifier = Modifier.size(32.dp), color = item.iconColor)
                 }
-                Spacer(modifier = Modifier.height(28.dp))
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // 2.  (header.title)
                 Text(
-                    item.title,
+                    text = item.title,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF1E293B),
-                    lineHeight = 34.sp
+                    color = Color(0xFF0F172A),
+                    lineHeight = 34.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    item.description,
-                    fontSize = 17.sp,
-                    color = Color(0xFF64748B),
-                    lineHeight = 26.sp
-                )
-                Spacer(modifier = Modifier.height(18.dp))
-                if (item.quote.isNotBlank()) {
-                    Text(
-                        "“${item.quote}”",
-                        fontSize = 16.sp,
-                        color = Color(0xFF334155),
-                        lineHeight = 24.sp
-                    )
-                }
+
                 Spacer(modifier = Modifier.weight(1f))
 
+                // 3.  (footer.quote)
+                if (item.quote.isNotBlank()) {
+                    Column {
+                        HorizontalDivider(
+                            modifier = Modifier.width(40.dp),
+                            thickness = 3.dp,
+                            color = item.iconColor.copy(alpha = 0.3f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "“${item.quote}”",
+                            fontSize = 18.sp,
+                            fontStyle = FontStyle.Italic,
+                            color = Color(0xFF64748B),
+                            lineHeight = 28.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // 4. 按钮
                 Button(
                     onClick = onClick,
-                    modifier = Modifier.fillMaxWidth().height(64.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5D5FEF)),
-                    shape = RoundedCornerShape(24.dp)
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("View", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("view", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -635,12 +646,31 @@ fun ReadingModeScreen(
                 lineHeight = 40.sp
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                item.description,
-                fontSize = 18.sp,
-                color = Color(0xFF64748B),
-                lineHeight = 28.sp
-            )
+            if (item.quote.isNotBlank()) {
+                Text(
+                    "QUOTE",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF94A3B8),
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "“${item.quote}”",
+                    fontSize = 18.sp,
+                    color = Color(0xFF475569),
+                    lineHeight = 28.sp,
+                    fontStyle = FontStyle.Italic
+                )
+            } else {
+                // 可选：没有 quote 时给一个弱提示
+                Text(
+                    text = "（此卡片暂无引用）",
+                    fontSize = 16.sp,
+                    color = Color(0xFF94A3B8),
+                    lineHeight = 24.sp
+                )
+            }
             Spacer(modifier = Modifier.height(40.dp))
             Box(
                 modifier = Modifier

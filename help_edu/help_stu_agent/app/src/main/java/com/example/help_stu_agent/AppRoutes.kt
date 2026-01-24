@@ -7,7 +7,7 @@ object AppRoutes {
     const val Upload = "upload"
     const val KnowledgeTree = "knowledgeTree"
     const val KnowledgeTreeHistory = "knowledge_tree_history"
-
+    const val DailyReport = "daily_report"
     const val KnowledgeCardDetail = "knowledge_card_detail/{cardId}"
     fun knowledgeCardDetail(cardId: String): String =
         "knowledge_card_detail/${Uri.encode(cardId)}"

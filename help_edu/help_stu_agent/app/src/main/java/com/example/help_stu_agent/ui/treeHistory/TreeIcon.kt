@@ -1,4 +1,4 @@
-package com.example.help_stu_agent.ui.tree
+package com.example.help_stu_agent.ui.treeHistory
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable

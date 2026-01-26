@@ -1,4 +1,4 @@
-package com.example.help_stu_agent
+package com.example.help_stu_agent.ui.treeStructure
 
 import com.example.help_stu_agent.BuildConfig.DEEPSEEK_API_KEY
 import kotlinx.coroutines.Dispatchers
@@ -10,6 +10,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 
 @OptIn(InternalSerializationApi::class)
@@ -83,7 +84,7 @@ class DeepSeekClient(
 
             parsed?.choices?.firstOrNull()?.message?.content ?: "返回内容解析为空"
 
-        } catch (e: java.net.SocketTimeoutException) {
+        } catch (e: SocketTimeoutException) {
             "连接超时：服务器响应太慢，请稍后再试。"
         } catch (e: Exception) {
             "网络异常：${e.localizedMessage}"

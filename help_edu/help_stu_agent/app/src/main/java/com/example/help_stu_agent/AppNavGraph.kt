@@ -11,7 +11,10 @@ import com.example.help_stu_agent.ui.card.KnowledgeCardDetailPage
 import com.example.help_stu_agent.ui.elite.EliteIdeasPage
 import com.example.help_stu_agent.ui.report.DailyReportPage
 import com.example.help_stu_agent.ui.sparky.SparkyLinkPage
-import com.example.help_stu_agent.ui.tree.KnowledgeTreeHistoryPage
+import com.example.help_stu_agent.ui.treeHistory.KnowledgeTreeHistoryPage
+import com.example.help_stu_agent.ui.treeStructure.KnowledgeTreePageFromCache
+import com.example.help_stu_agent.ui.treeStructure.KnowledgeTreePageFromId
+import com.example.help_stu_agent.ui.uploadPdf.PdfUploadPage
 
 @Composable
 fun AppNavGraph(

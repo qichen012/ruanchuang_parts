@@ -1,13 +1,15 @@
 @file:Suppress("unused")
 
-package com.example.help_stu_agent
+package com.example.help_stu_agent.ui.uploadPdf
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -160,7 +162,7 @@ fun PdfUploadPage(
         runCatching {
             context.contentResolver.takePersistableUriPermission(
                 uri,
-                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         }
 
@@ -365,7 +367,7 @@ fun PdfUploadPage(
                     )
 
                     // 删除（右上）
-                    androidx.compose.animation.AnimatedVisibility(visible = canDelete) {
+                    AnimatedVisibility(visible = canDelete) {
                         IconButton(
                             onClick = { resetAll() },
                             modifier = Modifier
@@ -385,7 +387,7 @@ fun PdfUploadPage(
                     }
 
                     // 上传完成/处理中/完成：勾选徽标动效（右上）
-                    androidx.compose.animation.AnimatedVisibility(
+                    AnimatedVisibility(
                         visible = stage == PdfStage.Uploaded || stage == PdfStage.Processing || stage == PdfStage.Done,
                         modifier = Modifier.align(Alignment.TopEnd)
                     ) {
@@ -426,7 +428,7 @@ fun PdfUploadPage(
                 Spacer(Modifier.height(18.dp))
 
                 // 文件信息卡
-                androidx.compose.animation.AnimatedVisibility(visible = pdfUri != null) {
+                AnimatedVisibility(visible = pdfUri != null) {
                     FileInfoCard(
                         palette = c,
                         fileName = pdfName ?: "PDF 文件",
@@ -457,7 +459,7 @@ fun PdfUploadPage(
                 Spacer(Modifier.height(18.dp))
 
                 // 完成后进入知识树
-                androidx.compose.animation.AnimatedVisibility(visible = showGo) {
+                AnimatedVisibility(visible = showGo) {
                     Button(
                         onClick = onGoToKnowledgeTree,
                         modifier = Modifier

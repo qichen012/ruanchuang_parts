@@ -1,4 +1,4 @@
-package com.example.help_stu_agent
+package com.example.help_stu_agent.ui.treeStructure
 
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable

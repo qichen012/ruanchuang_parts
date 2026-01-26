@@ -1,4 +1,4 @@
-package com.example.help_stu_agent
+package com.example.help_stu_agent.ui.treeStructure
 
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -70,6 +70,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlin.math.roundToInt
 import android.annotation.SuppressLint
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import org.commonmark.ext.gfm.tables.TablesExtension
@@ -79,6 +80,8 @@ import org.commonmark.renderer.html.HtmlRenderer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.example.help_stu_agent.data.repo.KnowledgeTreeRepository
+import com.example.help_stu_agent.ui.uploadPdf.PdfTreeCache
+
 @Composable
 fun KnowledgeTreePage(
     assetFileName: String = "demo.json"
@@ -903,7 +906,7 @@ private fun GridNodeCard(
 fun DetailPanelPager(
     layoutData: Map<String, PositionedNode>,
     siblingIds: List<String>,
-    pagerState: androidx.compose.foundation.pager.PagerState,
+    pagerState: PagerState,
     userScrollEnabled: Boolean,
     onRequestExpand: () -> Unit,
     onClose: () -> Unit,

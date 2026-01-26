@@ -12,7 +12,9 @@ fun MainHomePage(
     onGoUpload: () -> Unit,
     onGoKnowledgeTreeHistory: () -> Unit,
     onGoDailyReport: () -> Unit,
+    onGoSparkyLink: () -> Unit,
     onOpenKnowledgeCard: (String) -> Unit,
+    onGoEliteIdeas: () -> Unit
 ) {
     val drawerOpen = remember { mutableStateOf(false) }
 
@@ -31,8 +33,9 @@ fun MainHomePage(
             when (action) {
                 HomeDrawerAction.DailyReport -> onGoDailyReport()
                 HomeDrawerAction.KnowledgeStructure -> onGoKnowledgeTreeHistory()
-                HomeDrawerAction.SparkyLink -> { /* TODO */ }
-                HomeDrawerAction.EliteIdeas -> { /* TODO */ }
+                HomeDrawerAction.SparkyLink -> onGoSparkyLink()
+                HomeDrawerAction.EliteIdeas -> onGoEliteIdeas()
+
                 HomeDrawerAction.MyAccount -> { /* TODO */ }
             }
         }

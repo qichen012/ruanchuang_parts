@@ -5,11 +5,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,9 +36,11 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.absoluteValue
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KnowledgeTreeHistoryPage(
-    onOpen: (String) -> Unit
+    onOpen: (String) -> Unit,
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val repo = remember { KnowledgeTreeRepository(context) }
@@ -53,7 +63,6 @@ fun KnowledgeTreeHistoryPage(
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        // 右侧大圆角装饰块（与主页相同语言）
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
@@ -70,28 +79,26 @@ fun KnowledgeTreeHistoryPage(
         ) {
             Spacer(Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                Spacer(Modifier.width(14.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Knowledge Trees",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFF0F172A)
-                    )
-                    Text(
-                        text = if (loading) "Loading…" else "${list.size} saved",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF64748B)
-                    )
-                }
-            }
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("Knowledge Trees", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = if (loading) "Loading…" else "${list.size} saved",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFFF6F9FE)
+                )
+            )
 
             Spacer(Modifier.height(14.dp))
 

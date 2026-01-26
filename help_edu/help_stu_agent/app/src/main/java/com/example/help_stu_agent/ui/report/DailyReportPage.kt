@@ -27,6 +27,7 @@ import com.example.help_stu_agent.ui.home.ReflectionItem
 import com.example.help_stu_agent.ui.home.SparklesIcon
 import kotlin.math.absoluteValue
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DailyReportPage(
     onBack: () -> Unit,
@@ -67,46 +68,29 @@ fun DailyReportPage(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // Top bar（保持与你主页的“圆形按钮 + 简洁标题”语言一致）
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    modifier = Modifier.size(44.dp),
-                    shape = CircleShape,
-                    color = Color.White,
-                    shadowElevation = 2.dp,
-                    onClick = onBack
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color(0xFF1E293B)
+            // Top bar
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("Daily Report", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = if (items.isEmpty()) "No cards yet" else "${items.size} cards",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
                         )
                     }
-                }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFFF6F9FE) // 温和背景色
+                )
+            )
 
-                Spacer(Modifier.width(14.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Daily Report",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFF0F172A)
-                    )
-                    Text(
-                        text = if (items.isEmpty()) "No cards yet" else "${items.size} cards",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF64748B)
-                    )
-                }
-            }
 
             if (items.isEmpty()) {
                 EmptyDailyReportState()

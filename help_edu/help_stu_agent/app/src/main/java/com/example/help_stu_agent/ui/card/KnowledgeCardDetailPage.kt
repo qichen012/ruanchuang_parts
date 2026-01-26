@@ -1,6 +1,5 @@
 package com.example.help_stu_agent.ui.card
 
-import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,15 +24,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.help_stu_agent.data.repo.KnowledgeCardRepository
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.Locale
 
-// 只保留详情页需要展示的字段：summary + keyPoints
 private data class KeyPointItem(
     val icon: String = "•",
     val content: String,

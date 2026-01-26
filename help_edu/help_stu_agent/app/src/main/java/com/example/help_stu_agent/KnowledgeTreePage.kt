@@ -78,8 +78,7 @@ import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-
-
+import com.example.help_stu_agent.data.repo.KnowledgeTreeRepository
 @Composable
 fun KnowledgeTreePage(
     assetFileName: String = "demo.json"
@@ -100,6 +99,39 @@ fun KnowledgeTreePage(
     } else {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
+        }
+    }
+}
+
+@Composable
+fun KnowledgeTreePageFromId(treeId: String) {
+    val context = LocalContext.current
+    val repo = remember { KnowledgeTreeRepository(context) }
+
+    var loading by remember { mutableStateOf(true) }
+    var json by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(treeId) {
+        loading = true
+        json = withContext(Dispatchers.IO) { repo.loadJsonById(treeId) }
+        // 可选：顺便回填缓存，便于你其它地方仍用 FromCache 也能显示
+        PdfTreeCache.latestJson = json
+        loading = false
+    }
+
+    when {
+        loading -> {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        json.isNullOrBlank() -> {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("该知识树记录不存在或内容已被删除")
+            }
+        }
+        else -> {
+            KnowledgeTreePageFromJson(json!!)
         }
     }
 }

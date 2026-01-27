@@ -21,6 +21,8 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.ListAlt
 import androidx.compose.material.icons.outlined.Schema
+import androidx.compose.material.icons.outlined.Science
+import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -36,12 +38,16 @@ import androidx.compose.ui.unit.dp
 import com.example.help_stu_agent.ui.theme.BranchPaletteDark
 import com.example.help_stu_agent.ui.theme.BranchPaletteLight
 
+
 enum class HomeDrawerAction {
     DailyReport,
     KnowledgeStructure,
     SparkyLink,
     EliteIdeas,
-    MyAccount
+    EruditionLab,
+    MyAccount,
+    MeetingMinutes,
+
 }
 
 @Composable
@@ -158,6 +164,13 @@ fun HomeDrawerSheet(
                         title = "Sparky Link",
                         onClick = { onAction(HomeDrawerAction.SparkyLink); onDismiss() }
                     )
+                    DrawerItem(
+                        icon = Icons.Outlined.Science,
+                        iconBg = palette.getOrNull(4)?.copy(alpha = 0.16f) ?: cs.primary.copy(alpha = 0.14f),
+                        iconTint = palette.getOrNull(4) ?: cs.primary,
+                        title = "Erudition Lab",
+                        onClick = { onAction(HomeDrawerAction.EruditionLab); onDismiss() }
+                    )
 
                     DrawerItem(
                         icon = Icons.Outlined.Lightbulb,
@@ -166,6 +179,15 @@ fun HomeDrawerSheet(
                         title = "Elite Ideas",
                         onClick = { onAction(HomeDrawerAction.EliteIdeas); onDismiss() }
                     )
+
+                    DrawerItem(
+                        icon = Icons.Outlined.RecordVoiceOver,
+                        iconBg = palette.getOrNull(2)?.copy(alpha = 0.16f) ?: cs.primary.copy(alpha = 0.14f),
+                        iconTint = palette.getOrNull(2) ?: cs.primary,
+                        title = "Meet Memo",
+                        onClick = { onAction(HomeDrawerAction.MeetingMinutes); onDismiss() }
+                    )
+
 
                     DrawerItem(
                         icon = Icons.Outlined.AccountCircle,

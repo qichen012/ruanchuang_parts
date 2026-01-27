@@ -15,7 +15,7 @@ object AppRoutes {
     const val KnowledgeCardDetail = "knowledge_card_detail/{cardId}"
     fun knowledgeCardDetail(cardId: String): String =
         "knowledge_card_detail/${Uri.encode(cardId)}"
-
     const val EliteIdeas = "elite_ideas"
-
+    const val EruditionLab = "erudition_lab"
+    const val MeetingMinutes = "meeting_minutes"
 }

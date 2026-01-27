@@ -9,6 +9,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.help_stu_agent.ui.card.KnowledgeCardDetailPage
 import com.example.help_stu_agent.ui.elite.EliteIdeasPage
+import com.example.help_stu_agent.ui.erudition.EruditionLabPage
+import com.example.help_stu_agent.ui.meeting.MeetingMinutesPage
 import com.example.help_stu_agent.ui.report.DailyReportPage
 import com.example.help_stu_agent.ui.sparky.SparkyLinkPage
 import com.example.help_stu_agent.ui.treeHistory.KnowledgeTreeHistoryPage
@@ -57,22 +59,27 @@ fun AppNavGraph(
                     navController.navigate(AppRoutes.EliteIdeas) {
                         launchSingleTop = true
                     }
+                },
+                onGoEruditionLab = {
+                    navController.navigate(AppRoutes.EruditionLab) {
+                        launchSingleTop = true
+                    }
+                },
+                onGoMeetingMinutes = {
+                    navController.navigate(AppRoutes.MeetingMinutes) { launchSingleTop = true }
                 }
+
+
             )
         }
 
 
         composable(AppRoutes.Upload) {
             PdfUploadPage(
-                onGoToKnowledgeTree = {
-                    // 典型期望：进入知识树后，返回键直接回“主界面”，而不是回到 Upload
-                    navController.navigate(AppRoutes.KnowledgeTree) {
-                        launchSingleTop = true
-                        popUpTo(AppRoutes.Upload) { inclusive = true }
-                    }
-                }
+                onBack = { navController.popBackStack() }
             )
         }
+
 
         composable(AppRoutes.KnowledgeTree) {
             KnowledgeTreePageFromCache()
@@ -127,6 +134,16 @@ fun AppNavGraph(
         }
         composable(AppRoutes.EliteIdeas) {
             EliteIdeasPage(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(AppRoutes.EruditionLab) {
+            EruditionLabPage(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(AppRoutes.MeetingMinutes) {
+            MeetingMinutesPage(
                 onBack = { navController.popBackStack() }
             )
         }

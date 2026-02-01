@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Share
@@ -99,7 +100,9 @@ fun MeetingMinutesPage(
             TopAppBar(
                 title = { Text("Meet Memo", color = Color(0xFFE8EEF8)) },
                 navigationIcon = {
-                    TextButton(onClick = onBack) { Text("Back", color = Color(0xFFAEC3E8)) }
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF070A10).copy(alpha = 0.88f)
@@ -125,7 +128,6 @@ fun MeetingMinutesPage(
                         level01 = rec.level01,
                         onStart = { permLauncher.launch(Manifest.permission.RECORD_AUDIO) },
                         onStop = {
-                            // ✅ 只负责停止；enqueue 在 Service.stopRecording() 里完成（后台也能发）
                             MeetingRecorder.stop(context)
                             screen = MeetScreen.Processing
                         }
@@ -230,11 +232,6 @@ private fun RecordingImmersive(
                 color = Color(0xFFE8EEF8)
             )
             Spacer(Modifier.height(6.dp))
-            Text(
-                text = "深色沉浸模式 · 音量驱动等离子球",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFAEC3E8)
-            )
 
             Spacer(Modifier.height(22.dp))
 
@@ -311,12 +308,6 @@ private fun RecordingImmersive(
                     modifier = Modifier.size(160.dp).shadow(18.dp, CircleShape).clip(CircleShape)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = if (isRecording) Icons.Outlined.StopCircle else Icons.Outlined.RecordVoiceOver,
-                            contentDescription = null,
-                            tint = Color(0xFFE8EEF8),
-                            modifier = Modifier.size(54.dp)
-                        )
                     }
                 }
 
@@ -494,7 +485,6 @@ private fun ProcessingIridescent(
     }
 }
 
-/* --------------------------- 结果：结构化会议纪要（摘要/要点/待办） --------------------------- */
 
 private data class MeetingMinutes(
     val summary: String = "",

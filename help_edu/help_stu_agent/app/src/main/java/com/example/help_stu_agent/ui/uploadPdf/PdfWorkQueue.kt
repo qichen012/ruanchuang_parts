@@ -2,27 +2,28 @@ package com.example.help_stu_agent.ui.uploadPdf
 
 import android.content.Context
 import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkContinuation
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import java.util.UUID
 
 object PdfWorkQueue {
-    const val UNIQUE_BATCH = "pdf_batch_queue"
-    const val TAG = "pdf_process"
+
+    const val TAG = "pdf_queue"
 
     /**
-     * 追加到同一个串行队列（后台静默处理），避免并发把后端/本地处理跑爆。
-     * @return 本次入队的 WorkRequest id 列表（UI 用来 lastOrNull/选中/取消）
+     * items: List of (uriStr, displayName)
+     * 返回每个 WorkRequest 的 id，便于 UI 定位/取消
      */
-    fun enqueueBatch(context: Context, items: List<Pair<String, String>>): List<UUID> {
+    fun enqueueBatch(
+        context: Context,
+        items: List<Pair<String, String>>
+    ): List<UUID> {
         if (items.isEmpty()) return emptyList()
 
         val wm = WorkManager.getInstance(context)
 
-        val reqs: List<OneTimeWorkRequest> = items.map { (uriStr, name) ->
+        val requests = items.map { (uriStr, name) ->
             OneTimeWorkRequestBuilder<PdfProcessWorker>()
                 .setInputData(
                     workDataOf(
@@ -34,17 +35,15 @@ object PdfWorkQueue {
                 .build()
         }
 
-        // 串行追加：队列存在就 APPEND；不存在就创建
-        var cont: WorkContinuation = wm.beginUniqueWork(
-            UNIQUE_BATCH,
+        wm.beginUniqueWork(
+            "pdf_pipeline_queue",
             ExistingWorkPolicy.APPEND,
-            reqs.first()
-        )
-        reqs.drop(1).forEach { r ->
-            cont = cont.then(r)
+            requests.first()
+        ).also { cont ->
+            requests.drop(1).forEach { cont.then(it) }
+            cont.enqueue()
         }
-        cont.enqueue()
 
-        return reqs.map { it.id }
+        return requests.map { it.id }
     }
 }

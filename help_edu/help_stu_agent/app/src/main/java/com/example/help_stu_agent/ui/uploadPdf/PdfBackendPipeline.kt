@@ -24,6 +24,12 @@ object PdfCardCache {
     @Volatile var latestCardJson: String? = null
 }
 
+enum class PdfStage {
+    Uploading,
+    Processing,
+    Done,
+    Error
+}
 
 data class PdfJobStatus(
     val jobId: String,

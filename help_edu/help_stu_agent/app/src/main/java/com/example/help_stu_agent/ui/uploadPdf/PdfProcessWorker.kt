@@ -20,7 +20,6 @@ class PdfProcessWorker(
         val displayName = inputData.getString(KEY_NAME) ?: "PDF"
         val uri = Uri.parse(uriStr)
 
-        // 确保持久权限（如果你在选择时已 takePersistableUriPermission，这里通常不需要）
         runCatching {
             applicationContext.contentResolver.takePersistableUriPermission(
                 uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -39,31 +38,25 @@ class PdfProcessWorker(
                     KEY_STAGE to stage,
                     KEY_PROGRESS to progress,
                     KEY_STATUS to text,
-                    KEY_NAME to displayName
+                    KEY_NAME to displayName,
+                    KEY_URI to uriStr
                 )
             )
         }
 
         return try {
-            // 1) 知识树
             val treeJson = PdfBackendPipeline.runPipeline(
                 context = applicationContext,
                 pdfUri = uri,
-                onUpdate = { up ->
-                    push(up.stage.name, up.progress01, "[树] ${up.statusText}")
-                }
+                onUpdate = { up -> push(up.stage.name, up.progress01, "[树] ${up.statusText}") }
             )
 
-            // 2) 知识卡
             val cardJson = PdfBackendPipeline.runCardPipeline(
                 context = applicationContext,
                 pdfUri = uri,
-                onUpdate = { up ->
-                    push(up.stage.name, up.progress01, "[卡] ${up.statusText}")
-                }
+                onUpdate = { up -> push(up.stage.name, up.progress01, "[卡] ${up.statusText}") }
             )
 
-            // 3) 入库（你原先在页面里做的事）:contentReference[oaicite:6]{index=6}
             var treeId: String? = null
             var cardId: String? = null
 
@@ -89,12 +82,13 @@ class PdfProcessWorker(
                 workDataOf(
                     KEY_TREE_ID to (treeId ?: ""),
                     KEY_CARD_ID to (cardId ?: ""),
-                    KEY_NAME to displayName
+                    OUT_NAME to displayName,
+                    OUT_URI to uriStr
                 )
             )
         } catch (e: Exception) {
             push("Error", 0f, "失败：${e.message ?: "unknown error"}")
-            Result.retry() // 需要更保守可改 failure()
+            Result.retry()
         }
     }
 
@@ -106,5 +100,8 @@ class PdfProcessWorker(
         const val KEY_STATUS = "status"
         const val KEY_TREE_ID = "treeId"
         const val KEY_CARD_ID = "cardId"
+
+        const val OUT_NAME = "out_name"
+        const val OUT_URI = "out_uri"
     }
 }

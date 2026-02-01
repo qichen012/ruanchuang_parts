@@ -372,7 +372,7 @@ fun PastContentScreen(
 
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = "7.15",
+                        text = "2.1",
                         fontSize = 44.sp,
                         fontWeight = FontWeight.ExtraBold,
                         fontFamily = FontFamily.Serif,
@@ -420,7 +420,7 @@ fun PastContentScreen(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "极简导航结构：底部五栏覆盖 DeFi 核心场景 “Stake | Portfolio | Swap | Liquidity | Settings” 五个图标精准对应质押、资产管理、兑换、流动性提供、设置，满足资深用户一站式需求。",
+                        text = "卷积神经网络 (CNN): 核心是局部连接和权值共享，通过卷积层提取特征，池化层进行降维和特征聚合（如最大池化、平均池化），最终通过全连接层输出。它擅长处理具有空间结构的数据，如图像。",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         lineHeight = 28.sp,
@@ -452,7 +452,7 @@ fun PastContentScreen(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "动线闭环：从“选择币种”到“完成兑换”3步达成 用户只需：选择支付/接收币种 → 输入数量 → 滑动确认，即可完成兑换。系统自动计算最优路径与预估到账金额，无需手动查询。",
+                                text = "循环神经网络 (RNN): 核心是循环结构和状态记忆。它的隐藏层 t 不仅依赖于当前输入 x_t，还依赖于上一时刻的隐藏状态 s_{t-1}，从而能处理序列数据。但存在长期依赖问题。",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 lineHeight = 28.sp,
@@ -882,7 +882,7 @@ private fun FlipPager(
             val j2 = launch { animY.animateTo(targetY, specOut) }
             j1.join(); j2.join()
 
-            // 更新索引：永远到“下一张”（因此下一张必然是第二层卡片）
+            // 更新索引：永远到“下一张”
             topIndex = floorMod(topIndex + 1, items.size)
 
             // 清空跟手位移
@@ -891,7 +891,7 @@ private fun FlipPager(
             animX.snapTo(0f)
             animY.snapTo(0f)
 
-            // Phase B: 堆叠补位（关键：避免“瞬移”）
+            // Phase B: 堆叠补位
             phase = DeckPhase.Shifting
             shift.snapTo(0f)
             shift.animateTo(1f, tween(durationMillis = 220))

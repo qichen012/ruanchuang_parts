@@ -18,4 +18,13 @@ object AppRoutes {
     const val EliteIdeas = "elite_ideas"
     const val EruditionLab = "erudition_lab"
     const val MeetingMinutes = "meeting_minutes"
+    const val Login = "login"
+    const val Register = "register"
+    const val UserProfile = "user_profile"
+
+    const val PastContent = "past_content"
+
+    const val TabHome = "tab_home"
+    const val TabFeatures = "tab_features"
+    const val TabUser = "tab_user"
 }

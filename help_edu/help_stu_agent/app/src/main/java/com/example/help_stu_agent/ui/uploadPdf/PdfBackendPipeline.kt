@@ -50,7 +50,7 @@ object PdfBackendPipeline {
      * Emulator 访问本机后端：10.0.2.2
      * 真机访问电脑：改成 http://<电脑局域网IP>:8000
      */
-    const val BASE_URL = "http://10.0.2.2:8000"
+    const val BASE_URL = "http://10.29.238.57:8000"
     const val CARD_BASE_URL = "http://10.29.142.138:8001"
 
 

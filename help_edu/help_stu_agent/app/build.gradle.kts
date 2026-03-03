@@ -100,5 +100,12 @@ dependencies {
     implementation("androidx.compose.runtime:runtime-livedata")
     implementation("androidx.documentfile:documentfile:1.0.1")
 
+    // ViewModel 与 Compose 集成
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    // Retrofit 网络请求
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    // Gson 转换器 (用于解析 JSON)
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
 }
 

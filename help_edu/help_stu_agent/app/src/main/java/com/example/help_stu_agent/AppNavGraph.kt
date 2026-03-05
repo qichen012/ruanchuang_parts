@@ -19,6 +19,7 @@ import com.example.help_stu_agent.ui.erudition.EruditionLabPage
 import com.example.help_stu_agent.ui.login.LoginPage
 import com.example.help_stu_agent.ui.login.RegisterPage
 import com.example.help_stu_agent.ui.meeting.MeetingMinutesPage
+import com.example.help_stu_agent.ui.opensource.OpenSourcePage
 import com.example.help_stu_agent.ui.past.PastContentPage
 import com.example.help_stu_agent.ui.profile.UserProfilePage
 import com.example.help_stu_agent.ui.report.DailyReportPage
@@ -36,7 +37,7 @@ fun AppNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = AppRoutes.Login,
+        startDestination = AppRoutes.Main,
         modifier = modifier
     ) {
         composable(AppRoutes.Login) {
@@ -89,9 +90,8 @@ fun AppNavGraph(
                 onGoMeetingMinutes = { navController.navigate(AppRoutes.MeetingMinutes) { launchSingleTop = true } },
                 onGoMyAccount = { navController.navigate(AppRoutes.UserProfile) { launchSingleTop = true } },
                 onLogout = { navController.navigate(AppRoutes.Login) { popUpTo(AppRoutes.Main) { inclusive = true } } },
-                onGoPastContent = {
-                    navController.navigate(AppRoutes.PastContent) { launchSingleTop = true }
-                }
+                onGoPastContent = { navController.navigate(AppRoutes.PastContent) { launchSingleTop = true } } ,
+                onGoOpenSource = { navController.navigate(AppRoutes.OpenSource) { launchSingleTop = true } }
             )
         }
 
@@ -201,6 +201,11 @@ fun AppNavGraph(
         }
         composable(AppRoutes.MeetingMinutes) {
             MeetingMinutesPage(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(AppRoutes.OpenSource) {
+            OpenSourcePage(
                 onBack = { navController.popBackStack() }
             )
         }

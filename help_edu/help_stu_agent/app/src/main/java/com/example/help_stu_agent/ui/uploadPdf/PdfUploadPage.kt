@@ -36,8 +36,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -98,9 +96,10 @@ fun PdfUploadPage(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF9FAFB))
+                .background(Color(0xFFF6F9FE)) // 统一背景色
                 .statusBarsPadding()
         ) {
+            // ========== 顶部导航栏 ==========
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -109,38 +108,38 @@ fun PdfUploadPage(
             ) {
                 if (onBack != null) {
                     IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF111827))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF1E293B))
                     }
                 }
                 Text(
                     text = "PDF Intelligence",
                     fontSize = 18.sp,
-                    fontFamily = FontFamily.Serif,
-                    fontStyle = FontStyle.Italic,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827)
+                    color = Color(0xFF1E293B) // 统一文字颜色
                 )
             }
 
             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // ========== 页面大标题 ==========
                 Text(
                     text = "Analyze Knowledge",
-                    fontSize = 38.sp,
-                    fontFamily = FontFamily.Serif,
-                    color = Color(0xFF1F2937)
+                    fontSize = 32.sp, // 与 Features 页面大小对齐
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF1E293B) // 统一深蓝灰
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "Our AI will extract key insights, summarize content, and answer your questions about the document.",
                     fontSize = 15.sp,
                     lineHeight = 22.sp,
-                    color = Color(0xFF6B7280)
+                    color = Color(0xFF64748B) // 统一中等灰蓝
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // ========== 增强交互虚线上传区 ==========
                 UploadInteractiveArea(
                     hasSelection = selectedFiles.isNotEmpty(),
                     selectedCount = selectedFiles.size,
@@ -150,17 +149,17 @@ fun PdfUploadPage(
                 AnimatedVisibility(visible = selectedFiles.isNotEmpty()) {
                     Button(
                         onClick = {
-                            // 正式提交给 WorkManager
                             PdfWorkQueue.enqueueBatch(context, selectedFiles)
-                            selectedFiles = emptyList() // 清空选中状态
-                            showImmersiveProgress = true // 展开沉浸式进度
+                            selectedFiles = emptyList()
+                            showImmersiveProgress = true
                         },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 24.dp)
-                            .height(56.dp),
+                            .height(56.dp)
+                            .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = Color(0xFF5D5FEF).copy(alpha = 0.5f)),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F172A))
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5D5FEF)) // 统一使用品牌蓝紫色
                     ) {
                         Text("Start Analysis", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
@@ -168,6 +167,7 @@ fun PdfUploadPage(
 
                 Spacer(modifier = Modifier.height(40.dp))
 
+                // ========== 最近洞察列表 ==========
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -177,14 +177,14 @@ fun PdfUploadPage(
                         text = "RECENT INSIGHTS",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF9CA3AF),
+                        color = Color(0xFF94A3B8),
                         letterSpacing = 1.sp
                     )
                     Text(
                         text = "View All",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0D9488),
+                        color = Color(0xFF5D5FEF), // 统一交互文字色
                         modifier = Modifier.clickable { /* TODO: View All Actions */ }
                     )
                 }
@@ -197,7 +197,7 @@ fun PdfUploadPage(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(
-                        items = workInfos.sortedByDescending { it.id }, // 最新在最上
+                        items = workInfos.sortedByDescending { it.id },
                         key = { it.id }
                     ) { wi ->
                         InsightQueueCard(wi)
@@ -206,6 +206,7 @@ fun PdfUploadPage(
             }
         }
 
+        // ========== 沉浸式分析进度遮罩 ==========
         AnimatedVisibility(
             visible = showImmersiveProgress,
             enter = fadeIn(tween(400)),
@@ -250,25 +251,24 @@ fun UploadInteractiveArea(
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        // 绘制虚线边框与扫描线
         Canvas(modifier = Modifier.matchParentSize()) {
             val stroke = Stroke(
                 width = 4.dp.toPx(),
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(24f, 24f), 0f)
             )
-            // 边框颜色（选中时带点绿色提示）
-            val outlineColor = if (hasSelection) Color(0xFFA7F3D0) else Color(0xFFE5E7EB)
+            // 未选中为浅蓝灰，选中为品牌淡紫蓝色
+            val outlineColor = if (hasSelection) Color(0xFF818CF8).copy(alpha = 0.5f) else Color(0xFFCBD5E1)
             drawRoundRect(
                 color = outlineColor,
                 style = stroke,
-                cornerRadius = CornerRadius(80f, 80f) // 大圆角
+                cornerRadius = CornerRadius(80f, 80f)
             )
 
-            // 如果有选中文件，绘制动态激光扫描线
             if (hasSelection) {
                 val yPos = size.height * scanY
+                // 将扫描线颜色替换为品牌紫蓝色，更具 AI 科技感
                 val scanBrush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color(0xFF10B981).copy(alpha = 0.3f), Color(0xFF10B981)),
+                    colors = listOf(Color.Transparent, Color(0xFF818CF8).copy(alpha = 0.2f), Color(0xFF5D5FEF)),
                     startY = yPos - 40.dp.toPx(),
                     endY = yPos
                 )
@@ -278,7 +278,7 @@ fun UploadInteractiveArea(
                     size = androidx.compose.ui.geometry.Size(size.width - 20.dp.toPx(), 40.dp.toPx())
                 )
                 drawLine(
-                    color = Color(0xFF10B981),
+                    color = Color(0xFF5D5FEF),
                     start = Offset(10.dp.toPx(), yPos),
                     end = Offset(size.width - 10.dp.toPx(), yPos),
                     strokeWidth = 2.dp.toPx()
@@ -286,7 +286,6 @@ fun UploadInteractiveArea(
             }
         }
 
-        // 内容区
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
 
             Surface(
@@ -296,7 +295,7 @@ fun UploadInteractiveArea(
                     .shadow(
                         elevation = 12.dp,
                         shape = RoundedCornerShape(24.dp),
-                        spotColor = if (hasSelection) Color(0xFF10B981) else Color.Black.copy(alpha = 0.5f)
+                        spotColor = if (hasSelection) Color(0xFF5D5FEF) else Color.Black.copy(alpha = 0.3f)
                     ),
                 shape = RoundedCornerShape(24.dp),
                 color = Color.White
@@ -307,13 +306,13 @@ fun UploadInteractiveArea(
                             Icon(
                                 imageVector = Icons.Outlined.Description,
                                 contentDescription = "Selected",
-                                tint = Color(0xFF059669),
+                                tint = Color(0xFF5D5FEF), // 品牌色图标
                                 modifier = Modifier.size(36.dp)
                             )
                             Icon(
                                 imageVector = Icons.Filled.CheckCircle,
                                 contentDescription = "Check",
-                                tint = Color(0xFF10B981),
+                                tint = Color(0xFF10B981), // 保留绿色的成功暗示
                                 modifier = Modifier
                                     .size(16.dp)
                                     .align(Alignment.BottomEnd)
@@ -321,11 +320,10 @@ fun UploadInteractiveArea(
                             )
                         }
                     } else {
-                        // 空状态：向上的上传箭头
                         Icon(
                             imageVector = Icons.Outlined.Upload,
                             contentDescription = "Upload",
-                            tint = Color(0xFF9CA3AF),
+                            tint = Color(0xFF94A3B8), // 未选中灰色
                             modifier = Modifier.size(36.dp)
                         )
                     }
@@ -338,13 +336,13 @@ fun UploadInteractiveArea(
                 text = if (hasSelection) "$selectedCount File(s) Ready" else "Upload your PDF here",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF111827)
+                color = Color(0xFF1E293B)
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = if (hasSelection) "AI is scanning for preparation" else " tap to browse your library",
+                text = if (hasSelection) "AI is scanning for preparation" else "tap to browse your library",
                 fontSize = 14.sp,
-                color = if (hasSelection) Color(0xFF059669) else Color(0xFF9CA3AF)
+                color = if (hasSelection) Color(0xFF5D5FEF) else Color(0xFF64748B)
             )
         }
     }
@@ -355,40 +353,37 @@ fun ImmersiveProgressOverlay(
     activeWork: WorkInfo?,
     onMinimize: () -> Unit
 ) {
-    // 读取任务进度，若为空则设为 0
     val progress = activeWork?.progress?.getFloat(PdfProcessWorker.KEY_PROGRESS, 0f)?.coerceIn(0f, 1f) ?: 0f
     val statusText = activeWork?.progress?.getString(PdfProcessWorker.KEY_STATUS) ?: "Preparing Analysis..."
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB).copy(alpha = 0.96f)) // 极强烈的半透明遮罩
-            .clickable(enabled = true) {} // 拦截点击事件
+            .background(Color(0xFFF6F9FE).copy(alpha = 0.96f)) // 使用一致的底层背景色+半透明
+            .clickable(enabled = true) {}
             .padding(32.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // 大圆环进度
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(180.dp)) {
                 CircularProgressIndicator(
                     progress = { 1f },
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFFE5E7EB),
+                    color = Color(0xFFE2E8F0), // 浅灰轨道
                     strokeWidth = 8.dp
                 )
                 CircularProgressIndicator(
                     progress = { progress },
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFF0F172A),
+                    color = Color(0xFF5D5FEF), // 品牌紫蓝进度
                     strokeWidth = 8.dp,
                     strokeCap = StrokeCap.Round
                 )
                 Text(
                     text = "${(progress * 100).toInt()}%",
-                    fontSize = 32.sp,
-                    fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827)
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF1E293B)
                 )
             }
 
@@ -398,19 +393,19 @@ fun ImmersiveProgressOverlay(
                 text = "AI is Processing",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF111827)
+                color = Color(0xFF1E293B)
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = statusText,
                 fontSize = 16.sp,
-                color = Color(0xFF6B7280)
+                color = Color(0xFF64748B)
             )
 
             Spacer(modifier = Modifier.height(80.dp))
 
             TextButton(onClick = onMinimize) {
-                Text("Run in Background", color = Color(0xFF0D9488), fontSize = 16.sp)
+                Text("Run in Background", color = Color(0xFF5D5FEF), fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -422,23 +417,22 @@ fun InsightQueueCard(wi: WorkInfo) {
         ?: wi.outputData.getString(PdfProcessWorker.OUT_NAME)
         ?: "PDF Document"
 
-    // 判断状态并配置胶囊颜色 (完全按照设计图还原)
     val (statusText, bgColor, textColor) = when (wi.state) {
         WorkInfo.State.SUCCEEDED -> Triple("COMPLETED", Color(0xFFECFDF5), Color(0xFF059669))
         WorkInfo.State.FAILED -> Triple("ERROR", Color(0xFFFEF2F2), Color(0xFFDC2626))
-        WorkInfo.State.CANCELLED -> Triple("CANCELLED", Color(0xFFF3F4F6), Color(0xFF6B7280))
-        WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED -> Triple("PROCESSING", Color(0xFFEFF6FF), Color(0xFF2563EB))
-        else -> Triple("QUEUED", Color(0xFFF3F4F6), Color(0xFF6B7280))
+        WorkInfo.State.CANCELLED -> Triple("CANCELLED", Color(0xFFF1F5F9), Color(0xFF64748B))
+        // Processing 状态使用品牌主题色
+        WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED -> Triple("PROCESSING", Color(0xFFEEF2FF), Color(0xFF5D5FEF))
+        else -> Triple("QUEUED", Color(0xFFF8FAFC), Color(0xFF64748B))
     }
 
-    // 默认显示昨天与大小的占位，真实中可以通过文件读取
     val subStatus = if (wi.state == WorkInfo.State.SUCCEEDED) "Yesterday • 2.4 MB" else "Processing now..."
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         color = Color.White,
-        shadowElevation = 2.dp // 细腻的悬停阴影感
+        shadowElevation = 2.dp
     ) {
         Row(
             modifier = Modifier
@@ -446,30 +440,28 @@ fun InsightQueueCard(wi: WorkInfo) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 图标底座 (设计图中的灰白圆角矩形)
             Box(
                 modifier = Modifier
                     .size(56.dp)
-                    .background(Color(0xFFF9FAFB), RoundedCornerShape(16.dp)),
+                    .background(Color(0xFFF1F5F9), RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Description,
                     contentDescription = null,
-                    tint = Color(0xFF9CA3AF),
+                    tint = Color(0xFF64748B),
                     modifier = Modifier.size(28.dp)
                 )
             }
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // 文字信息
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = name,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827),
+                    color = Color(0xFF1E293B),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -477,7 +469,7 @@ fun InsightQueueCard(wi: WorkInfo) {
                 Text(
                     text = subStatus,
                     fontSize = 13.sp,
-                    color = Color(0xFF9CA3AF),
+                    color = Color(0xFF94A3B8),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -485,7 +477,6 @@ fun InsightQueueCard(wi: WorkInfo) {
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 状态胶囊 (COMPLETED 等)
             Box(
                 modifier = Modifier
                     .background(bgColor, RoundedCornerShape(12.dp))

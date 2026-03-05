@@ -21,6 +21,7 @@ object AppRoutes {
     const val Login = "login"
     const val Register = "register"
     const val UserProfile = "user_profile"
+    const val OpenSource = "open_source"
 
     const val PastContent = "past_content"
 

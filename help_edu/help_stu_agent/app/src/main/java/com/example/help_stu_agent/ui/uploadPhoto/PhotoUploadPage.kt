@@ -1,10 +1,10 @@
-package com.example.help_stu_agent.ui.uploadPdf
+package com.example.help_stu_agent.ui.uploadPhoto
 
-import android.content.Intent
 import android.database.Cursor
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
@@ -20,7 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.*
@@ -43,11 +43,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.example.help_stu_agent.ui.uploadPdf.PdfProcessWorker
+import com.example.help_stu_agent.ui.uploadPdf.PdfWorkQueue
 
 @Composable
-fun PdfUploadPage(
+fun UploadPhotoPage(
     onBack: (() -> Unit)? = null,
-    onSwitchToPhoto: () -> Unit // 👇 新增：切换到图片模式的回调
+    onSwitchToPdf: () -> Unit // 👇 新增：切换到 PDF 模式的回调
 ) {
     val context = LocalContext.current
     val wm = remember { WorkManager.getInstance(context) }
@@ -60,11 +62,10 @@ fun PdfUploadPage(
     var showImmersiveProgress by remember { mutableStateOf(false) }
 
     val pickMultipleLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenMultipleDocuments()
+        contract = ActivityResultContracts.PickMultipleVisualMedia()
     ) { uris ->
-        if (uris.isNullOrEmpty()) return@rememberLauncherForActivityResult
-        uris.forEach { uri -> runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
-        val rawNames = uris.map { uri -> queryDisplayName(context, uri) ?: "PDF Document" }
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+        val rawNames = uris.map { uri -> queryDisplayName(context, uri) ?: "Image_${System.currentTimeMillis()}.jpg" }
         selectedFiles = uris.mapIndexed { idx, uri -> uri.toString() to dedupFileNames(rawNames)[idx] }
     }
 
@@ -88,26 +89,26 @@ fun PdfUploadPage(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF1E293B))
                     }
                 }
-                Text("PDF Intelligence", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                Text("Visual Intelligence", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
 
                 // 👇 新增：右上角的双箭头切换按钮
-                IconButton(onClick = onSwitchToPhoto, modifier = Modifier.align(Alignment.CenterEnd)) {
-                    Icon(Icons.Outlined.SwapHoriz, contentDescription = "Switch to Photo", tint = Color(0xFF1E293B))
+                IconButton(onClick = onSwitchToPdf, modifier = Modifier.align(Alignment.CenterEnd)) {
+                    Icon(Icons.Outlined.SwapHoriz, contentDescription = "Switch to PDF", tint = Color(0xFF1E293B))
                 }
             }
 
             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Analyze Knowledge", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1E293B))
+                Text("Analyze Image", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1E293B))
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Our AI will extract key insights, summarize content, and answer your questions about the document.", fontSize = 15.sp, lineHeight = 22.sp, color = Color(0xFF64748B))
+                Text("Extract text, identify objects, and generate insights from your images using AI.", fontSize = 15.sp, lineHeight = 22.sp, color = Color(0xFF64748B))
                 Spacer(modifier = Modifier.height(32.dp))
 
-                UploadInteractiveArea(
+                UploadPhotoInteractiveArea(
                     hasSelection = selectedFiles.isNotEmpty(),
                     selectedCount = selectedFiles.size,
-                    onClick = { pickMultipleLauncher.launch(arrayOf("application/pdf")) }
+                    onClick = { pickMultipleLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
                 )
 
                 AnimatedVisibility(visible = selectedFiles.isNotEmpty()) {
@@ -135,7 +136,7 @@ fun PdfUploadPage(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 LazyColumn(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(items = workInfos.sortedByDescending { it.id }, key = { it.id }) { wi -> InsightQueueCard(wi) }
+                    items(items = workInfos.sortedByDescending { it.id }, key = { it.id }) { wi -> InsightPhotoQueueCard(wi) }
                 }
             }
         }
@@ -146,9 +147,9 @@ fun PdfUploadPage(
     }
 }
 
-// ... 这里的 UploadInteractiveArea, ImmersiveProgressOverlay, InsightQueueCard 保持之前的代码不变 ...
+// ... 下方的 UploadPhotoInteractiveArea, ImmersiveProgressOverlay, InsightPhotoQueueCard 保持之前的代码不变 ...
 @Composable
-fun UploadInteractiveArea(hasSelection: Boolean, selectedCount: Int, onClick: () -> Unit) {
+fun UploadPhotoInteractiveArea(hasSelection: Boolean, selectedCount: Int, onClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "upload_anim")
     val scanY by infiniteTransition.animateFloat(initialValue = 0f, targetValue = 1f, animationSpec = infiniteRepeatable(animation = tween(2000, easing = LinearEasing), repeatMode = RepeatMode.Reverse), label = "scanLine")
     val tiltAngle by animateFloatAsState(targetValue = if (hasSelection) 8f else 0f, animationSpec = spring(dampingRatio = 0.5f, stiffness = 100f), label = "tilt")
@@ -171,7 +172,7 @@ fun UploadInteractiveArea(hasSelection: Boolean, selectedCount: Int, onClick: ()
                 Box(contentAlignment = Alignment.Center) {
                     if (hasSelection) {
                         Box {
-                            Icon(imageVector = Icons.Outlined.Description, contentDescription = "Selected", tint = Color(0xFF5D5FEF), modifier = Modifier.size(36.dp))
+                            Icon(imageVector = Icons.Outlined.Image, contentDescription = "Selected", tint = Color(0xFF5D5FEF), modifier = Modifier.size(36.dp))
                             Icon(imageVector = Icons.Filled.CheckCircle, contentDescription = "Check", tint = Color(0xFF10B981), modifier = Modifier.size(16.dp).align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp))
                         }
                     } else {
@@ -180,9 +181,9 @@ fun UploadInteractiveArea(hasSelection: Boolean, selectedCount: Int, onClick: ()
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
-            Text(text = if (hasSelection) "$selectedCount File(s) Ready" else "Upload your PDF here", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+            Text(text = if (hasSelection) "$selectedCount Image(s) Ready" else "Upload your Image here", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = if (hasSelection) "AI is scanning for preparation" else "tap to browse your library", fontSize = 14.sp, color = if (hasSelection) Color(0xFF5D5FEF) else Color(0xFF64748B))
+            Text(text = if (hasSelection) "AI is scanning for preparation" else "tap to open gallery", fontSize = 14.sp, color = if (hasSelection) Color(0xFF5D5FEF) else Color(0xFF64748B))
         }
     }
 }
@@ -209,8 +210,8 @@ fun ImmersiveProgressOverlay(activeWork: WorkInfo?, onMinimize: () -> Unit) {
 }
 
 @Composable
-fun InsightQueueCard(wi: WorkInfo) {
-    val name = wi.progress.getString(PdfProcessWorker.KEY_NAME) ?: wi.outputData.getString(PdfProcessWorker.OUT_NAME) ?: "PDF Document"
+fun InsightPhotoQueueCard(wi: WorkInfo) {
+    val name = wi.progress.getString(PdfProcessWorker.KEY_NAME) ?: wi.outputData.getString(PdfProcessWorker.OUT_NAME) ?: "Image Document"
     val (statusText, bgColor, textColor) = when (wi.state) {
         WorkInfo.State.SUCCEEDED -> Triple("COMPLETED", Color(0xFFECFDF5), Color(0xFF059669))
         WorkInfo.State.FAILED -> Triple("ERROR", Color(0xFFFEF2F2), Color(0xFFDC2626))
@@ -218,11 +219,11 @@ fun InsightQueueCard(wi: WorkInfo) {
         WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED -> Triple("PROCESSING", Color(0xFFEEF2FF), Color(0xFF5D5FEF))
         else -> Triple("QUEUED", Color(0xFFF8FAFC), Color(0xFF64748B))
     }
-    val subStatus = if (wi.state == WorkInfo.State.SUCCEEDED) "Yesterday • 2.4 MB" else "Processing now..."
+    val subStatus = if (wi.state == WorkInfo.State.SUCCEEDED) "Yesterday • 1.2 MB" else "Processing now..."
     Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), color = Color.White, shadowElevation = 2.dp) {
         Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(56.dp).background(Color(0xFFF1F5F9), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-                Icon(imageVector = Icons.Outlined.Description, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(28.dp))
+                Icon(imageVector = Icons.Outlined.Image, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(28.dp))
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -252,7 +253,7 @@ private fun queryDisplayName(context: android.content.Context, uri: Uri): String
 private fun dedupFileNames(names: List<String>): List<String> {
     val seen = mutableMapOf<String, Int>()
     return names.map { n ->
-        val key = n.trim().ifBlank { "PDF" }
+        val key = n.trim().ifBlank { "Image" }
         val count = (seen[key] ?: 0) + 1
         seen[key] = count
         if (count == 1) key else addSuffixBeforeExt(key, " ($count)")

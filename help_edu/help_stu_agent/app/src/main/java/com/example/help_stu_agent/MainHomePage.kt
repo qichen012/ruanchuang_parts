@@ -29,7 +29,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MainHomePage(
-    onGoUpload: () -> Unit,
+    onGoUploadPdf: () -> Unit,
+    onGoUploadPhoto: () -> Unit,
     onGoKnowledgeTreeHistory: () -> Unit,
     onGoDailyReport: () -> Unit,
     onGoSparkyLink: () -> Unit,
@@ -84,7 +85,8 @@ fun MainHomePage(
                     }
                     BottomNavItem.Features -> {
                         FeaturesPage(
-                            onGoUploadPdf = onGoUpload,
+                            onGoUploadPdf = onGoUploadPdf,
+                            onGoUploadPhoto = onGoUploadPhoto,
                             onGoOpenSource = onGoOpenSource,
                             onGoDailyReport = onGoDailyReport,
                             onGoKnowledgeStructure = onGoKnowledgeTreeHistory,

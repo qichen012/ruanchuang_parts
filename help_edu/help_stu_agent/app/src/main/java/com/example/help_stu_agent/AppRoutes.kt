@@ -4,7 +4,7 @@ import android.net.Uri
 
 object AppRoutes {
     const val Main = "main"
-    const val Upload = "upload"
+    const val UploadPdf = "upload_pdf"
     const val KnowledgeTree = "knowledgeTree"
     const val KnowledgeTreeHistory = "knowledge_tree_history"
     const val SparkyLink = "sparky_link"
@@ -22,6 +22,7 @@ object AppRoutes {
     const val Register = "register"
     const val UserProfile = "user_profile"
     const val OpenSource = "open_source"
+    const val UploadPhoto = "upload_photo"
 
     const val PastContent = "past_content"
 

@@ -83,30 +83,6 @@ import com.example.help_stu_agent.data.repo.KnowledgeTreeRepository
 import com.example.help_stu_agent.ui.uploadPdf.PdfTreeCache
 
 @Composable
-fun KnowledgeTreePage(
-    assetFileName: String = "demo.json"
-) {
-    val context = LocalContext.current
-    var jsonStr by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(assetFileName) {
-        jsonStr = withContext(Dispatchers.IO) {
-            runCatching {
-                context.assets.open(assetFileName).bufferedReader().use { it.readText() }
-            }.getOrElse { "" }
-        }
-    }
-
-    if (!jsonStr.isNullOrBlank()) {
-        KnowledgeTree(jsonStr!!)
-    } else {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    }
-}
-
-@Composable
 fun KnowledgeTreePageFromId(treeId: String) {
     val context = LocalContext.current
     val repo = remember { KnowledgeTreeRepository(context) }

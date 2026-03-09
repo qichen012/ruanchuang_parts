@@ -6,7 +6,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     kotlin("plugin.serialization")
-    id ("kotlin-kapt")
+    // 1. 移除 kapt，添加 ksp 插件
+    id("com.google.devtools.ksp")
 }
 
 val localProperties = Properties()
@@ -18,7 +19,6 @@ if (localPropertiesFile.exists()) {
 android {
     namespace = "com.example.help_stu_agent"
     compileSdk = 35
-
 
     defaultConfig {
         applicationId = "com.example.help_stu_agent"
@@ -32,11 +32,6 @@ android {
         val key = localProperties.getProperty("DEEPSEEK_API_KEY") ?: ""
         buildConfigField("String", "DEEPSEEK_API_KEY", "\"$key\"")
 
-        javaCompileOptions {
-            annotationProcessorOptions {
-                arguments["room.schemaLocation"] = "$projectDir/schemas"
-            }
-        }
     }
 
     buildTypes {
@@ -59,14 +54,17 @@ android {
         compose = true
         buildConfig = true
     }
+}
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
@@ -93,19 +91,15 @@ dependencies {
     implementation("org.commonmark:commonmark-ext-task-list-items:0.22.0")
     implementation(libs.androidx.navigation.compose)
 
-    implementation ("androidx.room:room-runtime:2.6.1")
-    kapt ("androidx.room:room-compiler:2.6.1")
-    implementation ("androidx.room:room-ktx:2.6.1")
+    implementation("androidx.room:room-runtime:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation("androidx.compose.runtime:runtime-livedata")
     implementation("androidx.documentfile:documentfile:1.0.1")
 
-    // ViewModel 与 Compose 集成
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
-    // Retrofit 网络请求
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    // Gson 转换器 (用于解析 JSON)
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-
 }
-

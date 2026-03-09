@@ -12,16 +12,15 @@ data class AuthResponse(val token: String?, val message: String?, val code: Int?
 
 // 2. 定义 API 接口
 interface ApiService {
-    @POST("/api/login")
+    @POST("/api/v1/login")
     suspend fun login(@Body request: AuthRequest): Response<AuthResponse>
 
-    @POST("/api/register")
+    @POST("/api/v1/register")
     suspend fun register(@Body request: AuthRequest): Response<AuthResponse>
 }
 
 // 3. 构建 Retrofit 实例
 object RetrofitClient {
-    // 注意：如果你在 Android 模拟器上测试本地的 FastAPI 后端，请使用 10.0.2.2 替代 localhost
     private const val BASE_URL = "http://10.0.2.2:8000"
 
     val apiService: ApiService by lazy {

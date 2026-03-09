@@ -19,7 +19,7 @@ enum class TreeLayoutMode {
     MINDMAP_VERTICAL,
 }
 
-// 供 UI 使用的定位节点模型（网格版仍沿用：用于详情面板、关联跳转、childrenIds 等）
+// 供 UI 使用的定位节点模型
 data class PositionedNode(
     val id: String,
     val title: String,

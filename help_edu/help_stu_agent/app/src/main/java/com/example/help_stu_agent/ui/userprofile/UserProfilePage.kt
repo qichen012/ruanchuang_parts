@@ -1,10 +1,11 @@
-package com.example.help_stu_agent.ui.profile
+package com.example.help_stu_agent.ui.userProfile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -46,12 +47,12 @@ fun UserProfilePage(
                     .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "C", style = MaterialTheme.typography.headlineLarge) // 模拟首字母
+                Text(text = "S", style = MaterialTheme.typography.headlineLarge) // 模拟首字母
             }
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = "Ctephen", style = MaterialTheme.typography.headlineMedium)
-            Text(text = "ctephen@university.edu", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+            Text(text = "Ctephen@university.edu", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -60,7 +61,7 @@ fun UserProfilePage(
             ProfileItem(icon = Icons.Default.Book, title = "Major", value = "Computer Science")
             ProfileItem(icon = Icons.Default.Face, title = "AR Device", value = "Thunderbird X2 (Connected)")
 
-            Divider(modifier = Modifier.padding(vertical = 16.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
             // 设置与登出
             Button(
@@ -68,7 +69,7 @@ fun UserProfilePage(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Default.ExitToApp, contentDescription = null)
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Log Out")
             }

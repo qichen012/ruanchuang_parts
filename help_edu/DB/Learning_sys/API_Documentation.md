@@ -1,6 +1,6 @@
 # Learning Management System API 文档
 
-本API文档描述了学习管理系统的所有可用端点和功能。
+本 API 文档描述了学习管理系统的所有可用端点、数据模型和认证机制。该后端基于 FastAPI 框架开发。
 
 ## 基础信息
 - **API 版本**: v1
@@ -8,106 +8,172 @@
 - **协议**: HTTPS/HTTP
 - **内容类型**: application/json
 
+## 认证机制
+本系统使用 **JWT (JSON Web Token)** 进行身份验证。
+- 注册 (`/register`) 和登录 (`/login`) 端点不需要身份验证。
+- 对于受保护的操作，应在 HTTP 请求头中附带 Token：
+  `Authorization: Bearer <your_access_token>`
+- Token 默认有效时长为 7 天。
+
+---
+
 ## 数据模型
+
+以下模型字段精确映射了 API 请求和响应中的 JSON 结构及数据库表结构。
 
 ### UserInformation (用户信息)
 - **id**: Integer (主键)
+- **email**: String (邮箱账号，唯一)
+- **password**: String (仅注册/登录时使用，加密存储，API 响应不返回)
 - **name**: String (最大长度 45)
 - **gender**: Enum ('male', 'female')
 - **age**: Integer
 
 ### SourceDocument (源文档)
 - **id**: Integer (主键)
-- **user_id**: Integer (外键)
-- **file_name**: String (最大长度 45)
-- **file_path**: String (最大长度 45)
-- **upload_date**: Date
+- **user_id**: Integer (外键，关联 UserInformation)
+- **file_name**: String (最大长度 255)
+- **file_path**: String (最大长度 500)
+- **upload_date**: Date (YYYY-MM-DD)
 - **processed_status**: Enum ('Pending', 'Done', 'Failed')
 
 ### DailyBrief (每日简报)
 - **id**: Integer (主键)
 - **user_id**: Integer (外键)
-- **title**: String (最大长度 45)
-- **content**: Text
-- **created_date**: Date
-- **brief_type**: Enum ('Daily', 'Weekly', 'Monthly')
+- **target_date**: Date
+- **posterior_insight**: String (最大长度 45)
+- **created_at**: DateTime
+- **new_review_date**: Date
+- **review_stage**: Integer
+- **User_reflect**: String (最大长度 45)
 
 ### ReviewLog (复习日志)
 - **id**: Integer (主键)
 - **user_id**: Integer (外键)
-- **document_id**: Integer (外键)
-- **review_date**: Date
-- **review_stage**: Integer
-- **User_reflect**: String (最大长度 45)
+- **brief_id**: Integer (外键，关联 DailyBrief)
+- **review_at**: DateTime
+- **feynman_score**: Integer
 
 ### EliteIdeaCard (精英想法卡片)
 - **id**: Integer (主键)
-- **user_id**: Integer (外键)
-- **card_title**: String (最大长度 45)
-- **card_content**: Text
-- **category**: String (最大长度 45)
-- **created_at**: DateTime
+- **daily_brief_id**: Integer (外键，关联 DailyBrief)
+- **origin_concept**: String (最大长度 45)
+- **meta_idea_name**: String (最大长度 45)
+- **meta_explanation**: String (最大长度 45)
+- **create_at**: DateTime
 
 ### EliteIdeaCase (精英想法案例)
 - **id**: Integer (主键)
+- **meta_id**: Integer (外键，关联 EliteIdeaCard)
 - **case_title**: String (最大长度 45)
-- **case_content**: Text
-- **source**: String (最大长度 45)
-- **applied_field**: String (最大长度 45)
+- **case_content**: String (最大长度 45)
+- **image_path**: String (最大长度 45)
+- **query_rewrite**: Text (最大长度 100)
 
 ### ExternalResource (外部资源)
 - **id**: Integer (主键)
-- **resource_title**: String (最大长度 45)
-- **resource_url**: String (最大长度 200)
-- **description**: Text
-- **category**: String (最大长度 45)
+- **card_id**: Integer (外键，关联 EliteIdeaCard)
+- **title**: String (最大长度 45)
+- **url**: String (最大长度 45)
+- **LLM_context**: Text (最大长度 100)
+- **source**: String (最大长度 45)
 
 ### UserScreenshot (用户截图)
 - **id**: Integer (主键)
 - **user_id**: Integer (外键)
-- **screenshot_path**: String (最大长度 100)
-- **capture_date**: Date
-- **related_document_id**: Integer
+- **image_path**: String (最大长度 45)
+- **vlm_analysis**: Text (最大长度 100)
+- **upload_date**: Date
 
 ### AssociationBrief (关联简报)
 - **id**: Integer (主键)
 - **user_id**: Integer (外键)
-- **title**: String (最大长度 45)
-- **content**: Text
-- **associated_topic**: String (最大长度 100)
-- **created_date**: Date
+- **type**: Enum ('Auto', 'Manual')
+- **content**: Text (最大长度 100)
+- **notes_date**: Date
+- **screenshot_date**: Date
+- **created_at**: DateTime
 
 ### ScholarNote (学者笔记)
 - **id**: Integer (主键)
 - **user_id**: Integer (外键)
-- **note_title**: String (最大长度 45)
-- **note_content**: Text
-- **subject_area**: String (最大长度 45)
-- **created_at**: DateTime
+- **notes_content**: Text (最大长度 100)
+- **target_date**: Date
+- **daily_brief_id**: Integer (外键)
 
 ### KnowledgeMap (知识图谱)
 - **id**: Integer (主键)
 - **user_id**: Integer (外键)
-- **map_title**: String (最大长度 45)
-- **map_structure**: JSON
+- **source_doc_id**: Integer (外键，关联 SourceDocument)
+- **map_json**: JSON
 - **created_at**: DateTime
 
 ### MapInteractionLog (图谱交互日志)
 - **id**: Integer (主键)
 - **user_id**: Integer (外键)
-- **map_id**: Integer (外键)
-- **interaction_type**: String (最大长度 45)
-- **interaction_data**: JSON
-- **timestamp**: DateTime
+- **source_doc_id**: Integer (外键)
+- **node_id**: String (最大长度 45)
+- **user_query**: Text
+- **ai_response**: Text (最大长度 100)
+- **created_at**: DateTime
+- **is_distilled**: Integer
 
 ### MapCognitiveSnapshot (图谱认知快照)
 - **id**: Integer (主键)
 - **user_id**: Integer (外键)
-- **map_id**: Integer (外键)
-- **snapshot_data**: JSON
-- **created_at**: DateTime
+- **source_doc_id**: Integer (外键)
+- **last_processed_log_id**: Integer
+- **snapshot_content**: Text (最大长度 100)
+- **path_nodes**: JSON
+- **version**: Integer
+- **last_log_id**: Integer
+
+### AppUsageLog (App使用时段日志)
+- **id**: Integer (主键，自增)
+- **user_id**: Integer (外键，关联 UserInformation)
+- **start_time**: DateTime (本次进入 App 的时间)
+- **end_time**: DateTime (本次离开 App 的时间)
+- **duration_seconds**: Integer (使用时长，单位：秒)
+
+---
 
 ## API 端点
+
+### 认证管理 
+
+#### 用户注册
+- **POST** `/register`
+- **请求体**: 
+  ```json
+  {
+    "email": "user@example.com",
+    "password": "secure_password"
+  }
+- **响应**: 200 OK
+    ```json
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI...",
+      "message": "注册成功",
+      "code": 200
+    }
+    ```
+
+#### 用户登录
+- **POST** `/login`
+- **请求体**:
+    ```JSON
+    {
+      "email": "user@example.com",
+      "password": "secure_password"
+    }```
+- **响应**: 200 OK
+    ```json
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI...",
+      "message": "登录成功",
+      "code": 200
+    }
+    ```
 
 ### 用户信息管理
 
@@ -659,6 +725,36 @@
 - **参数**: `snapshot_id` (路径参数)
 - **响应**: 成功消息
 
+### App 使用时段管理
+
+#### 获取所有使用时段记录
+- **GET** `/app-usage-logs`
+- **参数**: `skip` (可选, 默认0), `limit` (可选, 默认100), `user_id` (可选, 用于过滤特定用户的记录)
+- **响应**: App使用时段日志对象列表
+
+#### 获取特定使用时段记录
+- **GET** `/app-usage-logs/{log_id}`
+- **参数**: `log_id` (路径参数)
+- **响应**: App使用时段日志对象
+
+#### 创建使用时段记录 (App退到后台时调用)
+- **POST** `/app-usage-logs`
+- **请求体**: 
+  ```json
+  {
+    "user_id": 1,
+    "start_time": "2026-03-08T14:00:00",
+    "end_time": "2026-03-08T14:30:00",
+    "duration_seconds": 1800
+  }
+  ```dotnetcli
+- **响应**：创建的App使用时段日志对象
+
+#### 删除使用时段记录
+- **DELETE** `/app-usage-logs/{log_id}`
+- **参数**:`log_id` (路径参数)
+- **响应**: 成功消息
+  
 ## 错误处理
 
 API可能返回以下HTTP状态码：

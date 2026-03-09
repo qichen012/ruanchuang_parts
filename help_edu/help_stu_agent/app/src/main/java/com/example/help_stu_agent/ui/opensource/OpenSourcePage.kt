@@ -1,4 +1,4 @@
-package com.example.help_stu_agent.ui.opensource
+package com.example.help_stu_agent.ui.openSource
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

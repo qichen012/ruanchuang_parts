@@ -20,9 +20,11 @@ class UserInformation(Base):
     __tablename__ = "user_information"
     
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(45))
-    gender = Column(Enum('male', 'female'))
-    age = Column(Integer)
+    email = Column(String(100), unique=True, index=True) # 新增：邮箱作为账号
+    password = Column(String(255))                       # 新增：加密后的密码
+    name = Column(String(45), default="", server_default="") 
+    gender = Column(Enum('male', 'female'), default='male', server_default='male')
+    age = Column(Integer, default=0, server_default='0')
     
     # 关系
     source_documents = relationship("SourceDocument", back_populates="user")
@@ -40,8 +42,8 @@ class SourceDocument(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("user_information.id"))
-    file_name = Column(String(45))
-    file_path = Column(String(45))
+    file_name = Column(String(255))
+    file_path = Column(String(500))
     upload_date = Column(Date, nullable=False)
     processed_status = Column(Enum('Pending', 'Done', 'Failed'), nullable=False)
     

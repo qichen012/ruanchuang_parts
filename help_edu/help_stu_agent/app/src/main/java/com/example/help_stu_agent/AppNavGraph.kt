@@ -19,15 +19,16 @@ import com.example.help_stu_agent.ui.erudition.EruditionLabPage
 import com.example.help_stu_agent.ui.login.LoginPage
 import com.example.help_stu_agent.ui.login.RegisterPage
 import com.example.help_stu_agent.ui.meeting.MeetingMinutesPage
-import com.example.help_stu_agent.ui.opensource.OpenSourcePage
+import com.example.help_stu_agent.ui.openSource.OpenSourcePage
 import com.example.help_stu_agent.ui.past.PastContentPage
-import com.example.help_stu_agent.ui.profile.UserProfilePage
+import com.example.help_stu_agent.ui.userProfile.UserProfilePage
 import com.example.help_stu_agent.ui.report.DailyReportPage
 import com.example.help_stu_agent.ui.sparky.SparkyLinkPage
 import com.example.help_stu_agent.ui.treeHistory.KnowledgeTreeHistoryPage
 import com.example.help_stu_agent.ui.treeStructure.KnowledgeTreePageFromCache
 import com.example.help_stu_agent.ui.treeStructure.KnowledgeTreePageFromId
 import com.example.help_stu_agent.ui.uploadPdf.PdfUploadPage
+import com.example.help_stu_agent.ui.uploadPhoto.UploadPhotoPage
 
 
 @Composable
@@ -37,7 +38,7 @@ fun AppNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = AppRoutes.Main,
+        startDestination = AppRoutes.Login,
         modifier = modifier
     ) {
         composable(AppRoutes.Login) {
@@ -80,7 +81,8 @@ fun AppNavGraph(
             }
         ) {
             MainHomePage(
-                onGoUpload ={ navController.navigate(AppRoutes.Upload) { launchSingleTop = true } },
+                onGoUploadPdf ={ navController.navigate(AppRoutes.UploadPdf) { launchSingleTop = true } },
+                onGoUploadPhoto = { navController.navigate(AppRoutes.UploadPhoto) { launchSingleTop = true } },
                 onGoKnowledgeTreeHistory = { navController.navigate(AppRoutes.KnowledgeTreeHistory) { launchSingleTop = true } },
                 onGoDailyReport = { navController.navigate(AppRoutes.DailyReport) { launchSingleTop = true } },
                 onGoSparkyLink = { navController.navigate(AppRoutes.SparkyLink) { launchSingleTop = true } },
@@ -117,7 +119,7 @@ fun AppNavGraph(
 
         composable(AppRoutes.PastContent) {
             PastContentPage(
-                onBack = { navController.popBackStack() } // 处理返回事件
+                onBack = { navController.popBackStack() }
             )
         }
         composable(AppRoutes.UserProfile) {
@@ -131,12 +133,26 @@ fun AppNavGraph(
             )
         }
 
-        composable(AppRoutes.Upload) {
+        composable(AppRoutes.UploadPdf) {
             PdfUploadPage(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() } ,
+                onSwitchToPhoto = {
+                    navController.navigate(AppRoutes.UploadPhoto) {
+                        popUpTo(AppRoutes.UploadPdf) { inclusive = true }
+                    }
+                }
             )
         }
-
+        composable(AppRoutes.UploadPhoto) {
+            UploadPhotoPage(
+                onBack = { navController.popBackStack() },
+                onSwitchToPdf = {
+                    navController.navigate(AppRoutes.UploadPdf) {
+                        popUpTo(AppRoutes.UploadPhoto) { inclusive = true }
+                    }
+                }
+            )
+        }
 
         composable(AppRoutes.KnowledgeTree) {
             KnowledgeTreePageFromCache()

@@ -6,9 +6,10 @@ from database import (
     EliteIdeaCase, ExternalResource, UserScreenshot, AssociationBrief,
     ScholarNote, KnowledgeMap, MapInteractionLog, MapCognitiveSnapshot, ReviewLog
 )
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 from datetime import date, datetime
+import utils
 
 # 创建路由
 api_router = APIRouter()
@@ -35,8 +36,8 @@ class UserResponse(UserBase):
 # 源文档相关模型
 class SourceDocumentBase(BaseModel):
     user_id: Optional[int] = None
-    file_name: Optional[str] = Field(None, max_length=45)
-    file_path: Optional[str] = Field(None, max_length=45)
+    file_name: Optional[str] = Field(None, max_length=255)
+    file_path: Optional[str] = Field(None, max_length=500)
     upload_date: date
     processed_status: str = Field(..., pattern="^(Pending|Done|Failed)$")
 
@@ -45,8 +46,8 @@ class SourceDocumentCreate(SourceDocumentBase):
 
 class SourceDocumentUpdate(BaseModel):
     user_id: Optional[int] = None
-    file_name: Optional[str] = Field(None, max_length=45)
-    file_path: Optional[str] = Field(None, max_length=45)
+    file_name: Optional[str] = Field(None, max_length=255)
+    file_path: Optional[str] = Field(None, max_length=500)
     upload_date: Optional[date] = None
     processed_status: Optional[str] = Field(None, pattern="^(Pending|Done|Failed)$")
 
@@ -127,6 +128,74 @@ class EliteIdeaCardResponse(EliteIdeaCardBase):
     
     class Config:
         from_attributes = True
+
+class UserAuthRequest(BaseModel):
+    email: str = Field(..., description="用户账号")
+    password: str = Field(..., max_length=50)
+
+class TokenResponse(BaseModel):
+    token: Optional[str] = None
+    message: str
+    code: int
+
+class AppUsageCreate(BaseModel):
+    user_id: int
+    start_time: datetime
+    end_time: datetime
+    duration_seconds: int
+
+class AppUsageResponse(AppUsageCreate):
+    id: int
+    class Config:
+        from_attributes = True
+
+# --- API 端点 ---
+@api_router.post("/app-usage", response_model=AppUsageResponse)
+def record_app_usage(usage: AppUsageCreate, db: Session = Depends(get_db)):
+    db_usage = AppUsageLog(**usage.dict())
+    db.add(db_usage)
+    db.commit()
+    db.refresh(db_usage)
+    return db_usage
+
+@api_router.post("/register", response_model=TokenResponse)
+def register(user_data: UserAuthRequest, db: Session = Depends(get_db)):
+    # 检查数据库中是否已经存在该邮箱
+    db_user = db.query(UserInformation).filter(UserInformation.email == user_data.email).first()
+    if db_user:
+        return TokenResponse(token=None, message="邮箱已被注册，请直接登录", code=400)
+    
+    try:
+        # 密码加密
+        hashed_pwd = utils.get_password_hash(user_data.password)
+        
+        # 创建新用户 (由于 id 是自增的，不需要手动传 id)
+        new_user = UserInformation(
+            email=user_data.email, 
+            password=hashed_pwd,
+            # name, gender, age 可以留空，后续通过 PUT /users/{id} 补充
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        # 签发 Token
+        access_token = utils.create_access_token(data={"sub": new_user.email, "user_id": new_user.id})
+        
+        return TokenResponse(token=access_token, message="注册成功", code=200)
+    except Exception as e:
+        db.rollback()
+        return TokenResponse(token=None, message=f"服务器错误: {str(e)}", code=500)
+
+@api_router.post("/login", response_model=TokenResponse)
+def login(user_data: UserAuthRequest, db: Session = Depends(get_db)):
+    user = db.query(UserInformation).filter(UserInformation.email == user_data.email).first()
+    
+    if not user or not utils.verify_password(user_data.password, user.password):
+        return TokenResponse(token=None, message="账号或密码错误", code=401)
+    
+    access_token = utils.create_access_token(data={"sub": user.email, "user_id": user.id})
+    return TokenResponse(token=access_token, message="登录成功", code=200)
 
 # API端点
 # 用户相关API
@@ -1093,3 +1162,4 @@ def delete_map_cognitive_snapshot(snapshot_id: int, db: Session = Depends(get_db
     db.delete(db_snapshot)
     db.commit()
     return {"message": "Map cognitive snapshot deleted successfully"}
+

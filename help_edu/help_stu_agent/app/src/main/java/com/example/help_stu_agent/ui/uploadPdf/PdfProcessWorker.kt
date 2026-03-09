@@ -2,13 +2,20 @@ package com.example.help_stu_agent.ui.uploadPdf
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.example.help_stu_agent.data.net.PdfRetrofitClient
+import com.example.help_stu_agent.data.net.SourceDocumentCreateRequest
+import com.example.help_stu_agent.data.net.SourceDocumentUpdateRequest
 import com.example.help_stu_agent.data.repo.KnowledgeCardRepository
 import com.example.help_stu_agent.data.repo.KnowledgeTreeRepository
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.max
+import androidx.core.net.toUri
+
 
 class PdfProcessWorker(
     appContext: Context,
@@ -18,7 +25,7 @@ class PdfProcessWorker(
     override suspend fun doWork(): Result {
         val uriStr = inputData.getString(KEY_URI) ?: return Result.failure()
         val displayName = inputData.getString(KEY_NAME) ?: "PDF"
-        val uri = Uri.parse(uriStr)
+        val uri = uriStr.toUri()
 
         runCatching {
             applicationContext.contentResolver.takePersistableUriPermission(
@@ -44,7 +51,29 @@ class PdfProcessWorker(
             )
         }
 
+        // 用于保存后端数据库返回的源文档 ID，以便后续更新状态
+        var backendDocId: Int? = null
+
         return try {
+            push("Init", 0.05f, "正在同步文档信息至云端...")
+            try {
+                val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
+                val response = PdfRetrofitClient.api.createSourceDocument(
+                    SourceDocumentCreateRequest(
+                        user_id = 1, // TODO: 替换为当前登录的真实用户ID
+                        file_name = displayName,
+                        file_path = uriStr,
+                        upload_date = currentDate,
+                        processed_status = "Pending"
+                    )
+                )
+                backendDocId = response.id
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+
             val treeJson = PdfBackendPipeline.runPipeline(
                 context = applicationContext,
                 pdfUri = uri,
@@ -76,7 +105,17 @@ class PdfProcessWorker(
                 )
             }
 
-            push("Done", 1f, "完成：已保存到本地")
+
+            backendDocId?.let { id ->
+                runCatching {
+                    PdfRetrofitClient.api.updateSourceDocumentStatus(
+                        id,
+                        SourceDocumentUpdateRequest(processed_status = "Done")
+                    )
+                }
+            }
+
+            push("Done", 1f, "完成：已保存到本地与云端")
 
             Result.success(
                 workDataOf(
@@ -87,7 +126,16 @@ class PdfProcessWorker(
                 )
             )
         } catch (e: Exception) {
-            push("Error", 0f, "失败：${e.message ?: "unknown error"}")
+            backendDocId?.let { id ->
+                runCatching {
+                    PdfRetrofitClient.api.updateSourceDocumentStatus(
+                        id,
+                        SourceDocumentUpdateRequest(processed_status = "Failed")
+                    )
+                }
+            }
+
+            push("Error", 0f, "失败：${e.message ?: "未知错误"}")
             Result.retry()
         }
     }

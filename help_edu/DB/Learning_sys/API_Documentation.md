@@ -39,13 +39,17 @@
 
 ### DailyBrief (每日简报)
 - **id**: Integer (主键)
-- **user_id**: Integer (外键)
+- **user_id**: Integer (外键，关联 UserInformation)
 - **target_date**: Date
-- **posterior_insight**: String (最大长度 45)
+- **posterior_insight**: Text (今日洞见)
+- **key_concepts**: Text (核心概念总结)
 - **created_at**: DateTime
-- **new_review_date**: Date
-- **review_stage**: Integer
-- **User_reflect**: String (最大长度 45)
+- **next_review_date**: Date (下次复习日期)
+- **review_stage**: Integer (复习阶段)
+- **user_reflect**: Text (用户反思)
+- **source_handouts**: JSON (来源材料名称列表)
+- **handout_count**: Integer (材料数量)
+- **process_time**: String (处理耗时，如 "9.90s")
 
 ### ReviewLog (复习日志)
 - **id**: Integer (主键)
@@ -278,10 +282,16 @@
   ```json
   {
     "user_id": 1,
-    "title": "今日学习总结",
-    "content": "今天学习了...",
-    "created_date": "2023-10-01",
-    "brief_type": "Daily"
+    "target_date": "2026-03-09",
+    "posterior_insight": "今日学习内容聚焦于...",
+    "key_concepts": "1. 今日学习总览\n...",
+    "created_at": "2026-03-09T02:47:17.404697+00:00",
+    "next_review_date": "2026-03-10",
+    "review_stage": 0,
+    "user_reflect": "",
+    "source_handouts": ["数据科学理论基础：机器学习"],
+    "handout_count": 1,
+    "process_time": "9.90s"
   }
   ```
 - **响应**: 创建的每日简报对象

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db
+from database import AppUsageLog, get_db
 from database import (
     UserInformation, SourceDocument, DailyBrief, EliteIdeaCard,
     EliteIdeaCase, ExternalResource, UserScreenshot, AssociationBrief,
@@ -61,11 +61,15 @@ class SourceDocumentResponse(SourceDocumentBase):
 class DailyBriefBase(BaseModel):
     user_id: Optional[int] = None
     target_date: Optional[date] = None
-    posterior_insight: Optional[str] = Field(None, max_length=45)
+    posterior_insight: Optional[str] = None
+    key_concepts: Optional[str] = None
     created_at: Optional[datetime] = None
-    new_review_date: Optional[date] = None
-    reciew_stage: Optional[int] = None
-    User_reflect: Optional[str] = Field(None, max_length=45)
+    next_review_date: Optional[date] = None
+    review_stage: Optional[int] = None
+    user_reflect: Optional[str] = None
+    source_handouts: Optional[List[str]] = None
+    handout_count: Optional[int] = None
+    process_time: Optional[str] = None
 
 class DailyBriefCreate(DailyBriefBase):
     pass
@@ -73,10 +77,14 @@ class DailyBriefCreate(DailyBriefBase):
 class DailyBriefUpdate(BaseModel):
     user_id: Optional[int] = None
     target_date: Optional[date] = None
-    posterior_insight: Optional[str] = Field(None, max_length=45)
-    new_review_date: Optional[date] = None
-    reciew_stage: Optional[int] = None
-    User_reflect: Optional[str] = Field(None, max_length=45)
+    posterior_insight: Optional[str] = None
+    key_concepts: Optional[str] = None
+    next_review_date: Optional[date] = None
+    review_stage: Optional[int] = None
+    user_reflect: Optional[str] = None
+    source_handouts: Optional[List[str]] = None
+    handout_count: Optional[int] = None
+    process_time: Optional[str] = None
 
 class DailyBriefResponse(DailyBriefBase):
     id: int

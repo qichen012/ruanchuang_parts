@@ -60,11 +60,15 @@ class DailyBrief(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("user_information.id"))
     target_date = Column(Date)
-    posterior_insight = Column(String(45))
+    posterior_insight = Column(Text)              # 修改：放宽长度限制以存储长篇洞见
+    key_concepts = Column(Text)                   # 新增：核心概念长文本
     created_at = Column(DateTime)
-    new_review_date = Column(Date)
+    next_review_date = Column(Date)               # 修改：统一命名为 next_review_date
     review_stage = Column(Integer)
-    User_reflect = Column(String(45))
+    user_reflect = Column(Text)                   # 修改：改为全小写并使用 Text 存储长篇反思
+    source_handouts = Column(JSON)                # 新增：存储来源材料的列表
+    handout_count = Column(Integer)               # 新增：材料数量
+    process_time = Column(String(45))             # 新增：处理耗时
     
     # 关系
     user = relationship("UserInformation", back_populates="daily_briefs")
@@ -218,6 +222,19 @@ class MapCognitiveSnapshot(Base):
     # 关系
     user = relationship("UserInformation", back_populates="map_cognitive_snapshots")
     source_document = relationship("SourceDocument", back_populates="map_cognitive_snapshots")
+
+# App 使用时段日志表
+class AppUsageLog(Base):
+    __tablename__ = "app_usage_logs"
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("user_information.id"))
+    start_time = Column(DateTime)          # 本次打开 App 的时间
+    end_time = Column(DateTime)            # 本次离开 App 的时间
+    duration_seconds = Column(Integer)     # 使用时长（秒）
+    
+    # 关系
+    user = relationship("UserInformation")
 
 
 def get_db():

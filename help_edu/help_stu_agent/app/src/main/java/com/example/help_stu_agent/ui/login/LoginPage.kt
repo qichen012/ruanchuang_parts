@@ -15,7 +15,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginPage(
-    onLoginSuccess: (String) -> Unit,
+    onLoginSuccess: (String, Int) -> Unit,
     onGoRegister: () -> Unit,
     viewModel: LoginViewModel = viewModel() // 注入 ViewModel
 ) {
@@ -28,8 +28,10 @@ fun LoginPage(
     // 监听状态，处理成功回调
     LaunchedEffect(loginState) {
         if (loginState is LoginState.Success) {
-            val token = (loginState as LoginState.Success).token
-            onLoginSuccess(token) // 将 Token 传给上层进行本地加密存储并跳转
+            val successState = loginState as LoginState.Success
+
+            onLoginSuccess(successState.token, successState.userId)
+
             viewModel.resetState()
         }
     }

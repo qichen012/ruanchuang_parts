@@ -1,756 +1,427 @@
 package com.example.help_stu_agent.ui.sparky
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.*import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Title
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.example.help_stu_agent.data.repo.KnowledgeCardRepository
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
-import java.util.Random
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.math.sin
-import kotlin.math.sqrt
-
-
-data class SparkyReport(
-    val id: String,
-    val title: String,
-    val quote: String,
-    val createdAt: Long
-)
-
-data class SparkyDayGroup(
-    val dayKey: String,
-    val dayLabel: String,
-    val reports: List<SparkyReport>,
-    val color: Color
-)
-
-private sealed class SparkyMode {
-    data object Collapsed : SparkyMode()
-    data class Focus(
-        val dayKey: String,
-        val anchor: Offset, // The center of the day bubble that was clicked -> used for the return animation
-        val color: Color
-    ) : SparkyMode()
-}
-
-private data class Star(
-    val x: Float,
-    val y: Float,
-    val r: Float,
-    val blinkSpeed: Float,
-    val offsetPhase: Float
-)
-
-private data class FusedState(
-    val report: SparkyReport,
-    val from: Offset,
-    val color: Color
-)
-
-private val PastelRainbow = listOf(
-    Color(0xFF5D5FEF), // Purple Blue
-    Color(0xFFFF5D86), // Hot Pink
-    Color(0xFF00C9A7), // Teal Green
-    Color(0xFFFF9F43), // Orange
-    Color(0xFF4D96FF), // Soft Blue
-    Color(0xFF845EC2), // Deep Purple
-    Color(0xFFFF6B6B)  // Red
-)
 
 @Composable
 fun SparkyLinkPage(
     onBack: () -> Unit,
     onOpenReport: (String) -> Unit
 ) {
-    val context = LocalContext.current
-    val repo = remember { KnowledgeCardRepository(context) }
-    val cardEntities by repo.observeAll().collectAsState(initial = emptyList())
-
-    val groups = remember(cardEntities) {
-        val rawGroups = buildLast7DaysGroups(
-            reports = cardEntities.map { e ->
-                SparkyReport(
-                    id = e.id,
-                    title = e.headerTitle ?: (e.pdfDisplayName ?: "Daily Report"),
-                    quote = e.footerQuote ?: "",
-                    createdAt = e.createdAt
-                )
-            }
+    // 渐变背景色
+    val bgGradient = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFFE3F2F9), // 顶部淡蓝色
+            Color(0xFFF7FBFC), // 中部偏白
+            Color(0xFFF3F8FB)  // 底部淡蓝
         )
-        rawGroups.mapIndexed { index, group ->
-            group.copy(color = PastelRainbow[index % PastelRainbow.size])
-        }
-    }
-
-    SparkyLinkScene(
-        groups = groups,
-        onBack = onBack,
-        onOpenReport = onOpenReport
     )
-}
-
-private fun buildLast7DaysGroups(reports: List<SparkyReport>): List<SparkyDayGroup> {
-    val keyFmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    val byDay = reports.groupBy { keyFmt.format(it.createdAt) }
-
-    val cal = Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-    }
-    val weekdayFmt = SimpleDateFormat("EEE", Locale.ENGLISH)
-
-    return (0..6).map { i ->
-        val c = (cal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -i) }
-        val millis = c.timeInMillis
-        val key = keyFmt.format(millis)
-        val label = if (i == 0) "TODAY" else weekdayFmt.format(millis).uppercase(Locale.ENGLISH)
-        SparkyDayGroup(key, label, byDay[key].orEmpty(), Color.Transparent)
-    }.reversed()
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SparkyLinkScene(
-    groups: List<SparkyDayGroup>,
-    onBack: () -> Unit,
-    onOpenReport: (String) -> Unit
-) {
-    // --- Visual Constants ---
-    val ink = Color(0xFF1E293B)
-
-    var viewport by remember { mutableStateOf(IntSize.Zero) }
-    var mode by remember { mutableStateOf<SparkyMode>(SparkyMode.Collapsed) }
-
-    // --- Time for continuous animations (breathing, floating) ---
-    val inf = rememberInfiniteTransition(label = "sparky_time")
-    val t by inf.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(16000, easing = LinearEasing), RepeatMode.Restart),
-        label = "t"
-    )
-    val tw = (t * 2f * PI).toFloat()
-    val stars = remember { generateStars(150) }
-
-    // --- Unified Transition for Collapsed <-> Focus modes ---
-    val transition = updateTransition(targetState = mode, label = "ModeTransition")
-
-    val focus = mode as? SparkyMode.Focus
-    val isFocus = focus != null
-
-    val w = viewport.width.toFloat()
-    val h = viewport.height.toFloat()
-    val center = Offset(w / 2f, h / 2f)
-
-    // --- Animated Values ---
-    val globalScale by transition.animateFloat(
-        label = "GlobalScale",
-        transitionSpec = { spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessLow) }
-    ) { if (it is SparkyMode.Focus) 1.1f else 1.0f }
-
-    // Sparky bubble's target position
-    val sparkyTargetPos = remember(w, h) { Offset(w / 2f, h * 0.25f) }
-    val sparkyPos by transition.animateOffset(
-        label = "SparkyPos",
-        transitionSpec = { tween(400, easing = FastOutSlowInEasing) }
-    ) { if (it is SparkyMode.Focus) sparkyTargetPos else center }
-
-    // Day bubble's target position
-    val dayTargetPos = remember(w, h) { Offset(w / 2f, h * 0.70f) }
-    val dayPos by transition.animateOffset(
-        label = "DayPos",
-        transitionSpec = { tween(400, easing = FastOutSlowInEasing) }
-    ) { targetMode ->
-        when (targetMode) {
-            // 如果目标是聚焦状态，移动到屏幕上方的固定位置
-            is SparkyMode.Focus -> dayTargetPos
-
-            // 如果目标是折叠状态，我们需要回到它原本在圆圈中的位置（anchor）
-            is SparkyMode.Collapsed -> {
-                // 尝试从 transition 的当前状态（即还没退出的 Focus 状态）中获取 anchor
-                (transition.currentState as? SparkyMode.Focus)?.anchor ?: center
-            }
-        }
-    }
-
-    // Report bubbles' orbit expansion progress (0 -> 1)
-    val orbitProgress by transition.animateFloat(
-        label = "OrbitProgress",
-        transitionSpec = { tween(420, delayMillis = 80, easing = FastOutSlowInEasing) }
-    ) { if (it is SparkyMode.Focus) 1f else 0f }
-
-
-    // --- Drag & Drop State ---
-    var draggingId by remember { mutableStateOf<String?>(null) }
-    var dragOffset by remember { mutableStateOf(Offset.Zero) }
-    val fusedIds = remember { mutableStateListOf<String>() }
-    val fusedStack = remember { mutableStateListOf<FusedState>() }
-    var statusAdded by remember { mutableStateOf<String?>(null) }
-
-    // --- Animation for fusion/unfusion ---
-    val sparkyPulse = remember { Animatable(1f) }
-    var animBall by remember { mutableStateOf<FusedState?>(null) }
-    val animX = remember { Animatable(0f) }
-    val animY = remember { Animatable(0f) }
-    val animS = remember { Animatable(1f) }
-    val animA = remember { Animatable(1f) }
-    val scope = rememberCoroutineScope()
-
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .onSizeChanged { viewport = it }
+            .background(bgGradient)
+            .systemBarsPadding()
     ) {
-        if (w == 0f || h == 0f) return@Box
-
-        // --- Background ---
-        StarryBackground(
-            center = center,
-            width = w,
-            height = h,
-            stars = stars,
-            time = tw,
-            scale = if (isFocus) 1.2f else 1.0f // Subtle zoom on background
-        )
-
-        AnimatedVisibility(visible = !isFocus, enter = fadeIn(), exit = fadeOut()) {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Sparky Link", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            text = "Daily Report Hub",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFFF6F9FE)
-                )
-            )
-        }
-
-
-        // --- Added Report Status Bar ---
-        AnimatedVisibility(
-            visible = (isFocus && statusAdded != null),
-            enter = slideInVertically { -it } + fadeIn(),
-            exit = slideOutVertically { -it } + fadeOut(),
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 18.dp)
-        ) {
-            FusedReportStatusBar(
-                statusText = statusAdded ?: "",
-                canUndo = fusedStack.isNotEmpty(),
-                onUndo = {
-                    val last = fusedStack.removeLastOrNull() ?: return@FusedReportStatusBar
-                    fusedIds.remove(last.report.id)
-                    statusAdded = fusedStack.lastOrNull()?.report?.title
-
-                    // Animate the bubble back from Sparky's core
-                    scope.launch {
-                        val sparkyCurrentPos = sparkyPos + Offset(0f, 6f * sin(tw))
-                        animBall = last
-                        animX.snapTo(sparkyCurrentPos.x); animY.snapTo(sparkyCurrentPos.y)
-                        animS.snapTo(0.15f); animA.snapTo(1f)
-
-                        launch { animX.animateTo(last.from.x, spring(dampingRatio = 0.62f)) }
-                        launch { animY.animateTo(last.from.y, spring(dampingRatio = 0.62f)) }
-                        launch { animS.animateTo(1f, spring(dampingRatio = 0.62f)) }
-                            .invokeOnCompletion { animBall = null }
-                    }
-                }
-            )
-        }
-
-
-        // --- Core Scene ---
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = globalScale; scaleY = globalScale
-                    transformOrigin = TransformOrigin.Center
-                }
-        ) {
-            // 1. Sparky Core Bubble
-            val bigBaseR = min(w, h) * 0.17f
-            val bigBreath = 1f + 0.02f * sin(tw * 1.5f)
-            val sparkyFloatingY = if (isFocus) (6f * sin(tw)) else (20f * sin(tw))
-            val sparkyCurrentPos = sparkyPos + Offset(0f, sparkyFloatingY)
-            val sparkyCurrentR = bigBaseR * bigBreath * sparkyPulse.value
-
-            SparkyCoreBubble(
-                center = sparkyCurrentPos,
-                radius = sparkyCurrentR,
-                time = tw,
-                isFusing = animBall != null
-            )
-
-            // 2. Day Bubbles (Collapsed Mode)
-            if (!isFocus && transition.currentState == transition.targetState) {
-                val orbitR = min(w, h) * 0.35f
-                val n = max(1, groups.size)
-                groups.forEachIndexed { idx, g ->
-                    val baseAngle = (idx.toFloat() / n) * (2f * PI).toFloat() - (PI.toFloat() / 2f)
-                    val wobble = 0.10f * sin(tw * 1.2f + idx * 1.7f)
-                    val slowSwing = 0.25f * sin(tw * 0.35f)
-                    val ang = baseAngle + wobble + slowSwing
-                    val floatOffset = sin(tw * 2f + idx) * 12f
-
-                    val bubblePos = Offset(
-                        center.x + cos(ang) * orbitR,
-                        center.y + sin(ang) * orbitR + floatOffset
-                    )
-                    val bubbleR = min(w, h) * 0.065f
-
-                    BubbleNode(
-                        pos = bubblePos,
-                        radius = bubbleR,
-                        color = g.color,
-                        label = g.dayLabel,
-                        subLabel = "${g.reports.size}",
-                        onClick = {
-                            mode = SparkyMode.Focus(g.dayKey, bubblePos, g.color)
-                            draggingId = null
-                            dragOffset = Offset.Zero
-                            statusAdded = fusedStack.lastOrNull()?.report?.title
-                        }
-                    )
-                }
-            }
-
-            // 3. Focused Day, Reports & Close Button
-            if (focus != null) {
-                val dayR = min(w, h) * 0.08f
-                val closeR = min(w, h) * 0.06f
-                val reportR = min(w, h) * 0.055f
-
-                // Focused Day Bubble
-                BubbleNode(
-                    pos = dayPos,
-                    radius = dayR,
-                    color = focus.color,
-                    label = groups.find { it.dayKey == focus.dayKey }?.dayLabel ?: "DAY",
-                    onClick = { /* No-op when focused */ }
-                )
-
-                // Close Button
-                val closePos = Offset(w / 2f, h - with(LocalDensity.current) { 70.dp.toPx() })
-                BubbleNode(
-                    pos = closePos,
-                    radius = closeR,
-                    color = Color(0xFFE2E8F0),
-                    label = "CLOSE",
-                    textColor = ink,
-                    onClick = { mode = SparkyMode.Collapsed }
-                )
-
-                // Orbiting Report Bubbles
-                val activeGroup = groups.find { it.dayKey == focus.dayKey }
-                val reports = activeGroup?.reports.orEmpty().filter { it.id !in fusedIds }.take(12)
-                val n = max(1, reports.size)
-                val orbitRadius = min(w, h) * 0.15f * (1f + 0.03f * cos(tw * 2.2f)) // breathing orbit
-
-                reports.forEachIndexed { i, r ->
-                    val angle = (i.toFloat() / n) * 2f * PI.toFloat() + (tw * 0.15f) // slow rotation
-
-                    val basePos = dayPos + Offset(
-                        cos(angle) * orbitRadius * orbitProgress,
-                        sin(angle) * orbitRadius * orbitProgress
-                    )
-
-                    val isDragging = draggingId == r.id
-                    val currentPos = if (isDragging) basePos + dragOffset else basePos
-                    val dragScale = if (isDragging) 1.18f else 1.0f
-
-                    Box(
-                        modifier = Modifier
-                            .offset { IntOffset((currentPos.x - reportR).roundToInt(), (currentPos.y - reportR).roundToInt()) }
-                            .size(pxToDp(reportR * 2f))
-                            .graphicsLayer { scaleX = dragScale; scaleY = dragScale; alpha = orbitProgress }
-                            .pointerInput(r.id) { detectTapGestures(onTap = { onOpenReport(r.id) }) }
-                            .pointerInput(r.id) {
-                                detectDragGestures(
-                                    onDragStart = { draggingId = r.id; dragOffset = Offset.Zero },
-                                    onDrag = { change, amount -> change.consume(); if (animBall == null) dragOffset += amount },
-                                    onDragCancel = { draggingId = null; dragOffset = Offset.Zero },
-                                    onDragEnd = {
-                                        val dist = distance(currentPos, sparkyCurrentPos)
-                                        if (dist < bigBaseR * 1.1f && animBall == null) {
-                                            val fuseState = FusedState(r, currentPos, focus.color)
-                                            scope.launch {
-                                                // 1. Trigger Sparky's pulse
-                                                launch {
-                                                    sparkyPulse.animateTo(1.15f, tween(150))
-                                                    sparkyPulse.animateTo(1.0f, spring(dampingRatio = 0.45f))
-                                                }
-
-                                                // 2. Start the fusion animation
-                                                animBall = fuseState
-                                                animX.snapTo(currentPos.x); animY.snapTo(currentPos.y)
-                                                animS.snapTo(1f); animA.snapTo(1f)
-
-                                                launch { animX.animateTo(sparkyCurrentPos.x, tween(420, easing = FastOutSlowInEasing)) }
-                                                launch { animY.animateTo(sparkyCurrentPos.y, tween(420, easing = FastOutSlowInEasing)) }
-                                                launch { animS.animateTo(0.10f, tween(420, easing = FastOutSlowInEasing)) }
-                                                launch { animA.animateTo(0f, tween(280, easing = LinearEasing)) }.join()
-
-                                                // 3. Update state after animation
-                                                fusedIds.add(r.id)
-                                                fusedStack.add(fuseState)
-                                                statusAdded = r.title
-                                                animBall = null
-                                            }
-                                        }
-                                        draggingId = null
-                                        dragOffset = Offset.Zero
-                                    }
-                                )
-                            }
-                    ) {
-                        JellyBubble(color = focus.color, tag = shortTag(r.title))
-                    }
-                }
-            }
-
-            // 4. Fusion/Unfusion Animation Bubble (rendered on top)
-            val ball = animBall
-            if (ball != null) {
-                val fx = animX.value; val fy = animY.value
-                val fs = animS.value; val fa = animA.value.coerceIn(0f, 1f)
-                val br = min(w, h) * 0.055f * fs // Use the same base radius as reports
-
-                if (fa > 0.01f) {
-                    Box(
-                        modifier = Modifier
-                            .offset { IntOffset((fx - br).roundToInt(), (fy - br).roundToInt()) }
-                            .size(pxToDp(br * 2f))
-                            .graphicsLayer { alpha = fa }
-                    ) {
-                        JellyBubble(color = ball.color, tag = "")
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-// --- Visual Components ---
-
-@Composable
-private fun StarryBackground(
-    center: Offset,
-    width: Float,
-    height: Float,
-    stars: List<Star>,
-    time: Float,
-    scale: Float
-) {
-    Canvas(modifier = Modifier.fillMaxSize().graphicsLayer {
-        scaleX = scale; scaleY = scale
-        transformOrigin = TransformOrigin.Center
-    }) {
-        drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFF1F5F9), Color(0xFFE2E8F0), Color(0xFFCBD5E1)),
-                center = center,
-                radius = max(width, height)
-            )
-        )
-        stars.forEach { star ->
-            val brightness = 0.3f + 0.7f * sin(time * star.blinkSpeed + star.offsetPhase)
-            val alpha = (brightness * 0.8f).coerceIn(0f, 1f)
-            val px = star.x * width
-            val py = star.y * height
-            drawCircle(
-                color = Color.White,
-                radius = star.r * min(width, height) * (0.8f + 0.4f * brightness),
-                center = Offset(px, py),
-                alpha = alpha
-            )
-            if (star.r > 0.003f) {
-                drawCircle(
-                    color = Color(0xFF818CF8).copy(alpha = alpha * 0.3f),
-                    radius = star.r * min(width, height) * 4f,
-                    center = Offset(px, py)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SparkyCoreBubble(
-    center: Offset,
-    radius: Float,
-    time: Float,
-    isFusing: Boolean
-) {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val c = center
-        val r = radius
-        val glowColor = if (isFusing) Color(0xFFA78BFA) else Color(0xFF5D5FEF)
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(glowColor.copy(alpha = 0.3f), Color.Transparent),
-                center = c,
-                radius = r * 1.5f
-            ),
-            radius = r * 1.5f,
-            center = c
-        )
-        val bodyBrush = Brush.linearGradient(
-            colors = listOf(Color(0xFF818CF8), Color(0xFF4338CA)),
-            start = c - Offset(r, r), end = c + Offset(r, r)
-        )
-        drawCircle(brush = bodyBrush, radius = r, center = c)
-        val swirlOffset = Offset(cos(time) * r * 0.3f, sin(time) * r * 0.3f)
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(Color.White.copy(alpha = 0.2f), Color.Transparent),
-                center = c + swirlOffset,
-                radius = r * 0.6f
-            ),
-            radius = r * 0.6f,
-            center = c + swirlOffset
-        )
-        drawPath(
-            path = Path().apply {
-                addOval(androidx.compose.ui.geometry.Rect(center = c - Offset(0f, r * 0.4f), radius = r * 0.5f))
-            },
-            brush = Brush.linearGradient(
-                colors = listOf(Color.White.copy(alpha = 0.7f), Color.Transparent),
-                start = c - Offset(0f, r), end = c
-            )
-        )
-    }
-
-    Box(
-        modifier = Modifier
-            .offset { IntOffset((center.x - radius).roundToInt(), (center.y - radius).roundToInt()) }
-            .size(pxToDp(radius * 2f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("SPARKY", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-            Text(
-                if (isFusing) "PROCESSING..." else "LINK HUB",
-                color = Color.White.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-
-@Composable
-private fun BubbleNode(
-    pos: Offset,
-    radius: Float,
-    color: Color,
-    label: String,
-    subLabel: String? = null,
-    textColor: Color = Color.White,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .offset { IntOffset((pos.x - radius).roundToInt(), (pos.y - radius).roundToInt()) }
-            .size(pxToDp(radius * 2f))
-            .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) }
-    ) {
-        JellyBubble(color = color, tag = "")
         Column(
             modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = label,
-                color = textColor,
-                fontWeight = FontWeight.Bold,
-                style = if (label.length > 5) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodyMedium
-            )
-            if (subLabel != null) {
+            // 1. 顶部导航栏
+            SparkyHeader(onBack = onBack)
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 2. 核心双拼卡片区
+            SparkySplitCard()
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // 3. Slogan (奇妙共鸣)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = Color(0xFF0EA5E9),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = subLabel,
-                    color = textColor.copy(alpha = 0.8f),
-                    style = MaterialTheme.typography.labelSmall
+                    text = "探索记忆碎片间的奇妙共鸣",
+                    color = Color(0xFF64748B),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // 4. 底部滑动按钮
+            SlideToSparkButton(
+                onSlideComplete = {
+                    // 滑动完成后的逻辑，比如开始生成 Spark
+                }
+            )
+
+            Spacer(modifier = Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+private fun SparkyHeader(onBack: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+    ) {
+        // 圆形返回按钮
+        Surface(
+            onClick = onBack,
+            shape = CircleShape,
+            color = Color.White,
+            shadowElevation = 4.dp,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color(0xFF1E293B)
                 )
             }
         }
+
+        // 居中标题
+        Text(
+            text = "Spark Link",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF0F172A),
+            modifier = Modifier.align(Alignment.Center)
+        )
     }
 }
 
 @Composable
-private fun JellyBubble(color: Color, tag: String) {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val r = size.minDimension / 2f
-        val c = Offset(size.width / 2f, size.height / 2f)
+private fun SparkySplitCard() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            // 整个大卡片的外层圆角和阴影
+            .shadow(16.dp, RoundedCornerShape(32.dp), spotColor = Color(0xFF94A3B8).copy(alpha = 0.3f))
+            .clip(RoundedCornerShape(32.dp))
+    ) {
+        // 利用 Canvas 绘制上下的异形背景（中间向下凹陷）
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(340.dp) // 给定卡片整体高度
+        ) {
+            val w = size.width
+            val h = size.height
+            val midY = h * 0.45f // 上半部分占据的比例
+            val dipDepth = 25.dp.toPx() // 中间凹陷的深度
 
-        drawCircle(color = color.copy(alpha = 0.25f), radius = r * 1.1f, center = c + Offset(0f, r * 0.15f))
-        val gradient = Brush.radialGradient(
-            colors = listOf(color.copy(alpha = 0.8f), color),
-            center = c - Offset(r * 0.3f, r * 0.3f),
-            radius = r * 1.5f
-        )
-        drawCircle(brush = gradient, radius = r, center = c)
-        drawArc(
-            color = Color.White.copy(alpha = 0.3f),
-            startAngle = 0f, sweepAngle = 180f, useCenter = false,
-            topLeft = Offset(c.x - r * 0.7f, c.y - r * 0.7f),
-            size = androidx.compose.ui.geometry.Size(r * 1.4f, r * 1.4f),
-            style = Stroke(width = r * 0.1f, cap = StrokeCap.Round),
-            alpha = 0.5f
-        )
-        drawCircle(color = Color.White.copy(alpha = 0.8f), radius = r * 0.25f, center = c - Offset(r * 0.35f, r * 0.35f))
-        drawCircle(color = Color.White.copy(alpha = 0.5f), radius = r * 0.1f, center = c - Offset(r * 0.15f, r * 0.55f))
-    }
-    if (tag.isNotEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(tag, color = Color.White, fontWeight = FontWeight.ExtraBold)
+            // 上半部分形状 (白色)
+            val topPath = Path().apply {
+                moveTo(0f, 0f)
+                lineTo(w, 0f)
+                lineTo(w, midY)
+                // 绘制向下凹陷的二次贝塞尔曲线
+                quadraticBezierTo(w / 2f, midY + dipDepth, 0f, midY)
+                close()
+            }
+            drawPath(topPath, Color.White)
+
+            // 下半部分形状 (米黄色)
+            val bottomPath = Path().apply {
+                moveTo(0f, midY)
+                quadraticBezierTo(w / 2f, midY + dipDepth, w, midY)
+                lineTo(w, h)
+                lineTo(0f, h)
+                close()
+            }
+            drawPath(bottomPath, Color(0xFFFFF9ED)) // 淡米黄色
+        }
+
+        // 卡片内部的文字和图标层
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(340.dp)
+        ) {
+            // --- 上半部分 (Text Context) ---
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.45f)
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Text Context",
+                        color = Color(0xFF94A3B8),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF1F5F9)
+                    ) {
+                        Text(
+                            text = "RAW",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF64748B)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconBox(icon = Icons.Default.Title)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Classic", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                        Text("Source Data", fontSize = 13.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Medium)
+                    }
+                    Text("05.20", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFCBD5E1))
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            // --- 下半部分 (Transformed) ---
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.55f)
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
+            ) {
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Transformed",
+                        color = Color(0xFFD4A373),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFFFF2E2),
+                        border = BorderStroke(1.dp, Color(0xFFFFE4C4))
+                    ) {
+                        Text(
+                            text = "INSIGHT",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFFE88A31)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconBox(icon = Icons.Default.Eco, iconTint = Color(0xFF65A30D)) // 植物图标
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Frontier", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                        Text("Reframed", fontSize = 13.sp, color = Color(0xFFD4A373), fontWeight = FontWeight.Medium)
+                    }
+                    Text("06.15", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1E293B))
+                }
+            }
+        }
+
+        // 位于分割线正中央的圆形 Icon (带有阴影)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                // 0.45f 是上半部比例，减去圆圈高度一半使其完美居中于弧线上
+                .offset(y = (340.dp * 0.45f) - 24.dp)
+                .size(48.dp)
+                .shadow(8.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.1f))
+                .background(Color.White, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Title,
+                contentDescription = null,
+                tint = Color(0xFF1E293B),
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
 
 @Composable
-private fun FusedReportStatusBar(
-    statusText: String,
-    canUndo: Boolean,
-    onUndo: () -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = Color(0xFF0F172A).copy(alpha = 0.80f),
-        shadowElevation = 10.dp
+private fun IconBox(icon: ImageVector, iconTint: Color = Color(0xFF64748B)) {
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(16.dp))
+            .background(Color.White, RoundedCornerShape(16.dp)),
+        contentAlignment = Alignment.Center
     ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iconTint,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+private fun SlideToSparkButton(onSlideComplete: () -> Unit) {
+    var containerWidth by remember { mutableIntStateOf(0) }
+    val thumbSizeDp = 56.dp
+    val paddingDp = 6.dp
+    val density = LocalDensity.current
+
+    // 计算滑动组件的参数
+    val thumbSizePx = with(density) { thumbSizeDp.toPx() }
+    val paddingPx = with(density) { paddingDp.toPx() }
+    val maxDragPx = containerWidth - thumbSizePx - (paddingPx * 2)
+
+    val dragOffset = remember { Animatable(0f) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .height(68.dp)
+            .shadow(16.dp, CircleShape, spotColor = Color(0xFFA78BFA).copy(alpha = 0.3f))
+            .background(Color.Black, CircleShape)
+            .onSizeChanged { containerWidth = it.width },
+        contentAlignment = Alignment.CenterStart
+    ) {
+        // 背景文字
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Added: ",
-                color = Color.White.copy(alpha = 0.75f),
-                style = MaterialTheme.typography.labelLarge
-            )
-            Text(
-                text = statusText,
+                text = "Slide to Spark",
                 color = Color.White,
-                fontWeight = FontWeight.ExtraBold,
-                style = MaterialTheme.typography.labelLarge
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
             )
-            if (canUndo) {
-                Spacer(Modifier.width(12.dp))
-                Surface(
-                    onClick = onUndo,
-                    shape = RoundedCornerShape(999.dp),
-                    color = Color.White.copy(alpha = 0.12f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Rounded.Refresh, null,
-                            tint = Color(0xFFA78BFA),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "UNDO",
-                            color = Color(0xFFA78BFA),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
+            Spacer(modifier = Modifier.width(12.dp))
+            // 右侧的几个引导小箭头
+            Row {
+                repeat(3) { index ->
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.3f + (index * 0.2f)), // 渐变透明度
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
-    }
-}
 
-@Composable
-private fun pxToDp(px: Float) = with(LocalDensity.current) { px.toDp() }
-
-private fun distance(a: Offset, b: Offset): Float {
-    val dx = a.x - b.x
-    val dy = a.y - b.y
-    return sqrt(dx * dx + dy * dy)
-}
-
-private fun shortTag(title: String): String {
-    val s = title.trim()
-    if (s.isEmpty()) return "R"
-    return s.take(1).uppercase(Locale.getDefault())
-}
-
-private fun generateStars(n: Int): List<Star> {
-    val rnd = Random(System.currentTimeMillis())
-    return List(n) {
-        Star(
-            x = rnd.nextFloat(),
-            y = rnd.nextFloat(),
-            r = 0.001f + rnd.nextFloat() * 0.004f,
-            blinkSpeed = 1f + rnd.nextFloat() * 4f,
-            offsetPhase = rnd.nextFloat() * 10f
-        )
+        // 可拖动的圆形 Thumb
+        if (containerWidth > 0) {
+            Box(
+                modifier = Modifier
+                    .padding(start = paddingDp)
+                    .offset { IntOffset(dragOffset.value.roundToInt(), 0) }
+                    .size(thumbSizeDp)
+                    .background(Color(0xFFF8FAFC), CircleShape) // 微灰偏白
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                coroutineScope.launch {
+                                    // 超过 80% 视为解锁成功
+                                    if (dragOffset.value > maxDragPx * 0.8f) {
+                                        dragOffset.animateTo(maxDragPx)
+                                        onSlideComplete()
+                                        // 如果需要重置，可以延迟后弹回
+                                        // delay(500)
+                                        // dragOffset.animateTo(0f)
+                                    } else {
+                                        // 未达到阈值，弹回原点
+                                        dragOffset.animateTo(0f)
+                                    }
+                                }
+                            },
+                            onHorizontalDrag = { change, dragAmount ->
+                                change.consume()
+                                coroutineScope.launch {
+                                    val newOffset = (dragOffset.value + dragAmount)
+                                        .coerceIn(0f, maxDragPx)
+                                    dragOffset.snapTo(newOffset)
+                                }
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Slide",
+                    tint = Color(0xFF1E293B)
+                )
+            }
+        }
     }
 }

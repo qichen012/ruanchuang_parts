@@ -49,7 +49,7 @@ import com.example.help_stu_agent.ui.uploadPdf.PdfWorkQueue
 @Composable
 fun UploadPhotoPage(
     onBack: (() -> Unit)? = null,
-    onSwitchToPdf: () -> Unit // 👇 新增：切换到 PDF 模式的回调
+    onSwitchToPdf: () -> Unit
 ) {
     val context = LocalContext.current
     val wm = remember { WorkManager.getInstance(context) }
@@ -91,7 +91,6 @@ fun UploadPhotoPage(
                 }
                 Text("Visual Intelligence", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
 
-                // 👇 新增：右上角的双箭头切换按钮
                 IconButton(onClick = onSwitchToPdf, modifier = Modifier.align(Alignment.CenterEnd)) {
                     Icon(Icons.Outlined.SwapHoriz, contentDescription = "Switch to PDF", tint = Color(0xFF1E293B))
                 }
@@ -147,7 +146,6 @@ fun UploadPhotoPage(
     }
 }
 
-// ... 下方的 UploadPhotoInteractiveArea, ImmersiveProgressOverlay, InsightPhotoQueueCard 保持之前的代码不变 ...
 @Composable
 fun UploadPhotoInteractiveArea(hasSelection: Boolean, selectedCount: Int, onClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "upload_anim")

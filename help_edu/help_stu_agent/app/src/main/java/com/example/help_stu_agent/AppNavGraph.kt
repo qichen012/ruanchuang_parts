@@ -13,11 +13,15 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import com.example.help_stu_agent.data.local.UserManager
 import com.example.help_stu_agent.ui.card.KnowledgeCardDetailPage
 import com.example.help_stu_agent.ui.elite.EliteIdeasPage
 import com.example.help_stu_agent.ui.erudition.EruditionLabPage
 import com.example.help_stu_agent.ui.login.LoginPage
-import com.example.help_stu_agent.ui.login.RegisterPage
+import com.example.help_stu_agent.ui.register.RegisterPage
 import com.example.help_stu_agent.ui.meeting.MeetingMinutesPage
 import com.example.help_stu_agent.ui.openSource.OpenSourcePage
 import com.example.help_stu_agent.ui.past.PastContentPage
@@ -29,6 +33,7 @@ import com.example.help_stu_agent.ui.treeStructure.KnowledgeTreePageFromCache
 import com.example.help_stu_agent.ui.treeStructure.KnowledgeTreePageFromId
 import com.example.help_stu_agent.ui.uploadPdf.PdfUploadPage
 import com.example.help_stu_agent.ui.uploadPhoto.UploadPhotoPage
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -42,10 +47,18 @@ fun AppNavGraph(
         modifier = modifier
     ) {
         composable(AppRoutes.Login) {
+            val context = LocalContext.current
+            val coroutineScope = rememberCoroutineScope()
+            val userManager = remember { UserManager(context) }
             LoginPage(
-                onLoginSuccess = {
-                    navController.navigate(AppRoutes.Main) {
-                        popUpTo(AppRoutes.Login) { inclusive = true }
+                // 接收从 LoginPage 传出来的 token 和 userId
+                onLoginSuccess = { token, userId ->
+                    coroutineScope.launch {
+                        userManager.saveUserSession(userId, token)
+
+                        navController.navigate(AppRoutes.Main) {
+                            popUpTo(AppRoutes.Login) { inclusive = true }
+                        }
                     }
                 },
                 onGoRegister = { navController.navigate(AppRoutes.Register) }
@@ -53,10 +66,20 @@ fun AppNavGraph(
         }
 
         composable(AppRoutes.Register) {
+            val context = LocalContext.current
+            val coroutineScope = rememberCoroutineScope()
+            val userManager = remember { UserManager(context) }
+
             RegisterPage(
-                onRegisterSuccess = {
-                    navController.navigate(AppRoutes.Main) {
-                        popUpTo(AppRoutes.Login) { inclusive = true }
+                // 接收 token 和 userId
+                onRegisterSuccess = { token, userId ->
+                    coroutineScope.launch {
+                        // 注册成功也直接保存 Session
+                        userManager.saveUserSession(userId, token)
+                        // 然后跳转主页
+                        navController.navigate(AppRoutes.Main) {
+                            popUpTo(AppRoutes.Login) { inclusive = true }
+                        }
                     }
                 },
                 onGoLogin = {

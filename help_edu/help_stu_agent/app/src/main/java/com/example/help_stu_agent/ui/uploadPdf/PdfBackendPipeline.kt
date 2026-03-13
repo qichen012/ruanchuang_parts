@@ -11,6 +11,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.net.Proxy
 import java.util.concurrent.TimeUnit
 
 /**
@@ -50,11 +51,11 @@ object PdfBackendPipeline {
      * Emulator 访问本机后端：10.0.2.2
      * 真机访问电脑：改成 http://<电脑局域网IP>:8000
      */
-    const val BASE_URL = "http://10.29.238.57:8000"
-    const val CARD_BASE_URL = "http://10.29.142.138:8001"
+    const val BASE_URL = "http://10.29.142.138:8001"
 
 
     private val http = OkHttpClient.Builder()
+        .proxy(Proxy.NO_PROXY)
         .connectTimeout(60, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
         .writeTimeout(120, TimeUnit.SECONDS)
@@ -70,7 +71,7 @@ object PdfBackendPipeline {
         val jobId = uploadCreateJob(context, pdfUri)
         PdfTreeCache.latestJobId = jobId
 
-        // 轮询进度（把后端0..1 映射到 UI 0.15..0.95 更自然）
+        // 轮询进度（把后端0..1 映射到 UI 0.15..0.95 ）
         onUpdate(PdfUiUpdate(PdfStage.Processing, 0.15f, "解析与入库中…"))
 
         val finalStatus = pollJob(jobId) { st ->
@@ -107,39 +108,99 @@ object PdfBackendPipeline {
         pdfUri: Uri,
         onUpdate: (PdfUiUpdate) -> Unit
     ): String = withContext(Dispatchers.IO) {
+        onUpdate(PdfUiUpdate(PdfStage.Processing, 0.3f, "生成讲义卡片中…"))
 
-        onUpdate(PdfUiUpdate(PdfStage.Uploading, 0f, "上传中…"))
-
+        // 1. 读取 PDF 文件的字节流
         val bytes = context.contentResolver.openInputStream(pdfUri)
             ?.use { it.readBytes() }
-            ?: throw RuntimeException("无法读取PDF：$pdfUri")
+            ?: run {
+                onUpdate(PdfUiUpdate(PdfStage.Error, 0f, "无法读取本地PDF文件"))
+                throw RuntimeException("无法读取PDF：$pdfUri")
+            }
 
+        // 2. 构造 MultipartBody，对应 FastAPI 中的 file: UploadFile = File(...)
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart(
                 "file",
-                "upload.pdf",
+                "upload.pdf", // 这里是后端 file.filename 获取到的默认名字
                 bytes.toRequestBody("application/pdf".toMediaType())
             )
             .build()
 
-        onUpdate(PdfUiUpdate(PdfStage.Processing, 0.3f, "服务端解析中…"))
+        // 3. 构建 Request，指向新的 generate_handout 接口
+        val req = Request.Builder()
+            .url("${BASE_URL}/generate_handout")
+            .post(body)
+            .build()
+
+        // 4. 发送网络请求并处理结果
+        http.newCall(req).execute().use { resp ->
+            val respStr = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) {
+                onUpdate(PdfUiUpdate(PdfStage.Error, 0f, "讲义生成失败：HTTP ${resp.code}"))
+                throw RuntimeException("讲义生成失败：HTTP ${resp.code}\n$respStr")
+            }
+
+            // 直接缓存并返回新的 JSON/Markdown 字符串
+            PdfCardCache.latestCardJson = respStr
+            onUpdate(PdfUiUpdate(PdfStage.Done, 1f, "讲义生成完成"))
+            return@withContext respStr
+        }
+    }
+
+    suspend fun generateDailyBriefing(
+        userId: Int,
+        targetDate: String
+    ): String = withContext(Dispatchers.IO) {
+        // 构造 JSON 请求体，与 FastAPI 中的 DailyBriefingRequest 对应
+        val jsonReq = JSONObject().apply {
+            put("user_id", userId)
+            put("target_date", targetDate)
+        }
+
+        val body = jsonReq.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
 
         val req = Request.Builder()
-            .url("${CARD_BASE_URL}/process_pdf")
+            .url("${BASE_URL}/generate_daily_briefing")
             .post(body)
             .build()
 
         http.newCall(req).execute().use { resp ->
             val respStr = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) {
-                onUpdate(PdfUiUpdate(PdfStage.Error, 0f, "处理失败：HTTP ${resp.code}"))
-                throw RuntimeException("处理失败：HTTP ${resp.code}\n$respStr")
+                throw RuntimeException("生成每日简报失败：HTTP ${resp.code}\n$respStr")
+            }
+            // 返回后端生成的完整 JSON 字符串
+            return@withContext respStr
+        }
+    }
+
+    suspend fun updateDailyBriefingCard(
+        userId: Int,
+        targetDate: String,
+        userReflect: String
+    ): String = withContext(Dispatchers.IO) {
+        val jsonReq = JSONObject().apply {
+            put("user_id", userId)
+            put("target_date", targetDate)
+            put("user_reflect", userReflect)
+        }
+
+        val body = jsonReq.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+
+        val req = Request.Builder()
+            .url("${BASE_URL}/update_daily_briefing")
+            .post(body)
+            .build()
+
+        http.newCall(req).execute().use { resp ->
+            val respStr = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) {
+                throw RuntimeException("更新简报失败：HTTP ${resp.code}\n$respStr")
             }
 
-            // 这里就是你给的 {meta, header, body, footer} 原始JSON
-            PdfCardCache.latestCardJson = respStr
-            onUpdate(PdfUiUpdate(PdfStage.Done, 1f, "处理完成，已生成知识卡片"))
+            // 直接返回新的 JSON 字符串
             return@withContext respStr
         }
     }

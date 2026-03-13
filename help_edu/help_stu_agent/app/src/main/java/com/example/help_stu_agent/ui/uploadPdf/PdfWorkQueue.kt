@@ -37,7 +37,7 @@ object PdfWorkQueue {
 
         wm.beginUniqueWork(
             "pdf_pipeline_queue",
-            ExistingWorkPolicy.APPEND,
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
             requests.first()
         ).also { cont ->
             requests.drop(1).forEach { cont.then(it) }

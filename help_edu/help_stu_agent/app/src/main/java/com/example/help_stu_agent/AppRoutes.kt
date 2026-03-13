@@ -23,9 +23,7 @@ object AppRoutes {
     const val UserProfile = "user_profile"
     const val OpenSource = "open_source"
     const val UploadPhoto = "upload_photo"
-
     const val PastContent = "past_content"
-
     const val TabHome = "tab_home"
     const val TabFeatures = "tab_features"
     const val TabUser = "tab_user"

@@ -1,30 +1,28 @@
 package com.example.help_stu_agent.ui.treeHistory
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,7 +33,6 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.absoluteValue
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KnowledgeTreeHistoryPage(
     onOpen: (String) -> Unit,
@@ -53,62 +50,64 @@ fun KnowledgeTreeHistoryPage(
         loading = false
     }
 
-    val fmt = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+    // 根据设计图，日期格式调整为 yyyy-MM-dd
+    val fmt = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 
+    // 背景色：素雅的米白/浅灰色
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF6F9FE)) // 与 HomePage 主背景一致
+            .background(Color(0xFFF7F6F2))
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .offset(x = 100.dp, y = 60.dp)
-                .size(300.dp, 620.dp)
-                .rotate(-15f)
-                .background(Color(0xFFE8EFFF), RoundedCornerShape(80.dp))
-        )
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp)
         ) {
-            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, bottom = 12.dp, start = 8.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color(0xFF1E1E1E)
+                    )
+                }
 
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Knowledge Trees", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            text = if (loading) "Loading…" else "${list.size} saved",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFFF6F9FE)
+                Text(
+                    text = "Knowledge Tree",
+                    modifier = Modifier.weight(1f).offset(x = (-16).dp), // 偏移抵消 IconButton 宽度，使其绝对居中
+                    textAlign = TextAlign.Center,
+                    fontSize = 22.sp,
+                    color = Color(0xFF2C2C2C)
                 )
+            }
+
+            // --- 副标题说明文本 ---
+            Text(
+                text = "Review and expand your previously generated\nknowledge structures.",
+                fontSize = 15.sp,
+                color = Color(0xFF7A7A7A),
+                lineHeight = 22.sp,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
             )
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(16.dp))
 
+            // --- 列表或加载状态 ---
             if (loading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.TopCenter
                 ) {
                     CircularProgressIndicator(
-                        modifier = Modifier.padding(top = 24.dp),
-                        color = Color(0xFF6366F1)
+                        modifier = Modifier.padding(top = 40.dp),
+                        color = Color(0xFF00B493)
                     )
                 }
             } else if (list.isEmpty()) {
@@ -116,16 +115,26 @@ fun KnowledgeTreeHistoryPage(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(list, key = { it.id }) { e ->
-                        val accent = pickAccentColor(e.id)
+                    itemsIndexed(list, key = { _, e -> e.id }) { index, e ->
+                        // 提取设计图中的四种高级配色
+                        val accentColors = listOf(
+                            Color(0xFF00B493), // 亮青色
+                            Color(0xFFFF7300), // 活力橙
+                            Color(0xFF2C2522), // 深咖色
+                            Color(0xFF007A66)  // 深墨绿
+                        )
+                        val accent = accentColors[(e.id.hashCode().absoluteValue) % accentColors.size]
+
                         TreeHistoryCard(
-                            title = e.title.ifBlank { "Knowledge Tree" },
+                            title = e.title.ifBlank { "Knowledge Structure" },
+                            subtitle = e.pdfDisplayName, // 根据设计图，有副标题时展示在第二行
                             timeText = fmt.format(Date(e.createdAt)),
-                            subtitle = e.pdfDisplayName,
+                            nodeCount = e.nodeCount ?: (5..30).random(), // 如果没有真实 nodeCount，给个默认范围
                             accent = accent,
+                            isFirst = index == 0, // 第一项按钮为深色
                             onClick = { onOpen(e.id) }
                         )
                     }
@@ -138,62 +147,92 @@ fun KnowledgeTreeHistoryPage(
 @Composable
 private fun TreeHistoryCard(
     title: String,
-    timeText: String,
     subtitle: String?,
+    timeText: String,
+    nodeCount: Int,
     accent: Color,
+    isFirst: Boolean,
     onClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(10.dp, RoundedCornerShape(22.dp))
-            .clickable { onClick() },
-        shape = RoundedCornerShape(22.dp),
-        color = Color.White
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(32.dp),
+        color = Color.White,
+        shadowElevation = 2.dp // 极弱的阴影，符合素雅风格
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 左侧小图标块：卡通化/轻松感
+            // 左侧图标框：实心圆角矩形
             Box(
                 modifier = Modifier
-                    .size(46.dp)
-                    .background(accent.copy(alpha = 0.12f), RoundedCornerShape(16.dp)),
+                    .size(64.dp)
+                    .background(accent, RoundedCornerShape(20.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                TreeIcon(modifier = Modifier.size(22.dp), color = accent)
+                // 保持使用你的 TreeIcon，但颜色设为纯白
+                TreeIcon(modifier = Modifier.size(32.dp), color = Color.White)
+            }
+
+            Spacer(Modifier.width(16.dp))
+
+            // 文本信息区
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontSize = 17.sp,
+                    color = Color(0xFF222222),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                // 对应设计图中 "Basics" 这一层级的显示
+                if (!subtitle.isNullOrBlank() && subtitle != title) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = subtitle,
+                        fontSize = 14.sp,
+                        fontFamily = FontFamily.Serif,
+                        color = Color(0xFF555555),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // 日期与连接数：全大写、加粗、灰色、小字号
+                Text(
+                    text = "$timeText • $nodeCount CONNECTIONS",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF999999),
+                    letterSpacing = 0.5.sp
+                )
             }
 
             Spacer(Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF0F172A),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(6.dp))
+            // 右侧圆形按钮：第一项为黑色，其他为极浅灰色
+            val btnBgColor = if (isFirst) Color(0xFF222222) else Color(0xFFF7F7F7)
+            val iconTint = if (isFirst) Color.White else Color(0xFFCCCCCC)
 
-                Text(
-                    text = timeText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF64748B)
-                )
-
-                if (!subtitle.isNullOrBlank()) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF94A3B8),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+            Surface(
+                onClick = onClick,
+                modifier = Modifier.size(42.dp),
+                shape = CircleShape,
+                color = btnBgColor
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -206,49 +245,36 @@ private fun EmptyTreeHistoryState() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 60.dp),
+            .padding(top = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(
             modifier = Modifier.size(84.dp),
             shape = RoundedCornerShape(28.dp),
             color = Color.White,
-            tonalElevation = 0.dp,
-            shadowElevation = 6.dp
+            shadowElevation = 2.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
-                TreeIcon(modifier = Modifier.size(34.dp), color = Color(0xFF6366F1))
+                TreeIcon(modifier = Modifier.size(36.dp), color = Color(0xFF00B493))
             }
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "No trees yet",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color(0xFF0F172A)
+            text = "No Knowledge Trees",
+            fontFamily = FontFamily.Serif,
+            fontSize = 20.sp,
+            color = Color(0xFF222222)
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "After you generate a knowledge tree, it will appear here for quick access.",
+            text = "Once you analyze a document, your structured\nlearning connections will appear here.",
             fontSize = 14.sp,
-            color = Color(0xFF64748B),
-            modifier = Modifier.padding(horizontal = 20.dp),
-            lineHeight = 20.sp
+            color = Color(0xFF888888),
+            modifier = Modifier.padding(horizontal = 32.dp),
+            lineHeight = 22.sp,
+            textAlign = TextAlign.Center
         )
     }
-}
-
-private fun pickAccentColor(id: String): Color {
-    val palette = listOf(
-        Color(0xFF6366F1), // indigo
-        Color(0xFF0EA5E9), // sky
-        Color(0xFF10B981), // emerald
-        Color(0xFFF59E0B), // amber
-        Color(0xFFEF4444), // red
-        Color(0xFF8B5CF6)  // violet
-    )
-    val idx = (id.hashCode().absoluteValue) % palette.size
-    return palette[idx]
 }

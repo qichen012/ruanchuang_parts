@@ -8,15 +8,26 @@ import retrofit2.http.POST
 
 // 1. 定义请求和响应的数据类
 data class AuthRequest(val email: String, val password: String)
-data class AuthResponse(val token: String?, val message: String?, val code: Int?)
-
+data class AuthResponse(
+    val token: String?,
+    val message: String?,
+    val code: Int?,
+    val user_id: Int?
+)
+data class RegisterRequest(
+    val email: String,
+    val password: String,
+    val name: String?,
+    val gender: String?,
+    val age: Int?
+)
 // 2. 定义 API 接口
 interface ApiService {
     @POST("/api/v1/login")
     suspend fun login(@Body request: AuthRequest): Response<AuthResponse>
 
     @POST("/api/v1/register")
-    suspend fun register(@Body request: AuthRequest): Response<AuthResponse>
+    suspend fun register(@Body request: RegisterRequest): Response<AuthResponse>
 }
 
 // 3. 构建 Retrofit 实例

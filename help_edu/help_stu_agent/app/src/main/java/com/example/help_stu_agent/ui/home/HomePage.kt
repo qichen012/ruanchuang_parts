@@ -43,7 +43,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.help_stu_agent.data.repo.KnowledgeCardRepository
 
-// 移除 PastContent，使之变为由 NavHost 接管的独立页面
 enum class Screen { Home, Reading }
 
 data class ReflectionItem(
@@ -214,7 +213,6 @@ fun ReflectionHomeScreen(
                 onCardClick = { callbacks.onReflectionCardClick(it) }
             )
 
-            // 【关键修改】使用 weight(1f) 将卡片下方的所有空白区域作为上滑/点击的触发区
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

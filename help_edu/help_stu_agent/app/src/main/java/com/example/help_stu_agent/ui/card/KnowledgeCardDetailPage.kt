@@ -1,16 +1,13 @@
 package com.example.help_stu_agent.ui.card
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Subject
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,30 +16,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.help_stu_agent.data.repo.KnowledgeCardRepository
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import java.util.Locale
-
-private data class KeyPointItem(
-    val icon: String = "•",
-    val content: String,
-    val title: String? = null
-)
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 private sealed class DetailState {
     data object Loading : DetailState()
     data class Error(val message: String) : DetailState()
     data class Ready(
+        val category: String,
         val title: String,
-        val summary: String?,
-        val keyPoints: List<KeyPointItem>
+        val subtitle: String,
+        val summary: String,
+        val keyPoints: List<String>,
+        val quote: String
     ) : DetailState()
 }
 
@@ -52,43 +44,49 @@ fun KnowledgeCardDetailPage(
     cardId: String,
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
-    val repo = remember { KnowledgeCardRepository(context) }
     var state by remember { mutableStateOf<DetailState>(DetailState.Loading) }
 
+    // 获取上下文并初始化 Repository
+    val context = LocalContext.current
+    val repository = remember { KnowledgeCardRepository(context) }
+
+    // 从本地 Room 数据库读取数据并解析 rawJson
     LaunchedEffect(cardId) {
-        state = DetailState.Loading
-        val entity = repo.getById(cardId) ?: return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            try {
+                val entity = repository.getById(cardId)
+                if (entity != null) {
+                    // 解析 rawJson
+                    val root = runCatching { JSONObject(entity.rawJson) }.getOrNull()
+                    val dataNode = root?.optJSONObject("data") ?: root
 
-        // 1. 解析原始 JSON
-        val root = runCatching { Json.parseToJsonElement(entity.rawJson).jsonObject }.getOrNull()
+                    // 根据实体类和常见结构提取所需字段
+                    val summaryStr = dataNode?.optString("summary", "暂无摘要内容") ?: "暂无摘要内容"
 
-        // 2. 核心修改：定位到 data 节点
-        val dataObj = root?.get("data")?.jsonObject ?: root
+                    val keyPointsArray = dataNode?.optJSONArray("key_points")
+                    val keyPointsList = mutableListOf<String>()
+                    if (keyPointsArray != null) {
+                        for (i in 0 until keyPointsArray.length()) {
+                            keyPointsList.add(keyPointsArray.getString(i))
+                        }
+                    }
 
-        // 3. 从 dataObj 提取 body
-        val body = dataObj?.get("body")?.jsonObject
-
-        // 提取 Summary
-        val summary = body?.get("summary")?.jsonPrimitive?.contentOrNull
-
-        // 提取 KeyPoints
-        val kpArray = body?.get("key_points")?.jsonArray
-        val keyPoints = kpArray?.mapNotNull { el ->
-            val o = el.jsonObject
-            val icon = o["icon"]?.jsonPrimitive?.contentOrNull ?: "•"
-            val text = o["text"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
-            KeyPointItem(icon = icon, title = null, content = text)
-        } ?: emptyList()
-
-        state = DetailState.Ready(
-            title = entity.headerTitle ?: "知识详情",
-            summary = summary,
-            keyPoints = keyPoints
-        )
+                    state = DetailState.Ready(
+                        category = entity.category ?: "默认分类",
+                        title = entity.headerTitle ?: "无标题",
+                        subtitle = entity.headerSubtitle ?: "无副标题",
+                        summary = summaryStr,
+                        keyPoints = keyPointsList,
+                        quote = entity.footerQuote ?: ""
+                    )
+                } else {
+                    state = DetailState.Error("在本地知识库中未找到该卡片 (ID: $cardId)")
+                }
+            } catch (e: Exception) {
+                state = DetailState.Error("本地数据解析失败: ${e.message}")
+            }
+        }
     }
-
-    val topTitle = (state as? DetailState.Ready)?.title ?: "知识详情"
 
     Scaffold(
         containerColor = Color(0xFFF8FAFC),
@@ -96,7 +94,7 @@ fun KnowledgeCardDetailPage(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = topTitle,
+                        text = (state as? DetailState.Ready)?.category ?: "卡片详情",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -106,27 +104,21 @@ fun KnowledgeCardDetailPage(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(0xFFF8FAFC)
-                )
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFFF8FAFC))
             )
         }
     ) { padding ->
         when (val s = state) {
-            DetailState.Loading -> Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
-
-            is DetailState.Error -> Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) { Text(s.message) }
-
+            DetailState.Loading -> {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFF5D5FEF))
+                }
+            }
+            is DetailState.Error -> {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text(s.message, color = Color.Red, modifier = Modifier.padding(16.dp))
+                }
+            }
             is DetailState.Ready -> {
                 LazyColumn(
                     modifier = Modifier
@@ -136,42 +128,86 @@ fun KnowledgeCardDetailPage(
                     contentPadding = PaddingValues(top = 10.dp, bottom = 40.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
+                    // --- 1. 标题区 ---
+                    item {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = s.title,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF1E293B)
+                            )
+                            if (s.subtitle.isNotBlank()) {
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = s.subtitle,
+                                    fontSize = 16.sp,
+                                    color = Color(0xFF64748B)
+                                )
+                            }
+                        }
+                    }
 
-                    // Summary
-                    if (!s.summary.isNullOrBlank()) {
+                    // --- 2. 摘要 (Summary) ---
+                    item {
+                        SectionContent(
+                            icon = Icons.Default.Subject,
+                            iconColor = Color(0xFF5D5FEF),
+                            title = "内容摘要 SUMMARY",
+                            content = s.summary
+                        )
+                    }
+
+                    // --- 3. 核心要点 (Key Points) ---
+                    if (s.keyPoints.isNotEmpty()) {
                         item {
                             Column {
-                                SectionHeader(title = "摘要 SUMMARY", icon = Icons.Default.Subject)
-                                Spacer(Modifier.height(12.dp))
+                                SectionHeader(Icons.Default.FormatListBulleted, Color(0xFF10B981), "核心要点 KEY POINTS")
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = CardDefaults.cardColors(containerColor = Color.White),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                                    shape = RoundedCornerShape(16.dp),
-                                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                    shape = RoundedCornerShape(16.dp)
                                 ) {
-                                    Text(
-                                        text = s.summary,
-                                        modifier = Modifier.padding(20.dp),
-                                        style = MaterialTheme.typography.bodyLarge.copy(
-                                            lineHeight = 28.sp,
-                                            letterSpacing = 0.3.sp,
-                                            color = Color(0xFF334155)
-                                        )
-                                    )
+                                    Column(modifier = Modifier.padding(20.dp)) {
+                                        s.keyPoints.forEachIndexed { index, point ->
+                                            Text(
+                                                text = "${index + 1}. $point",
+                                                style = MaterialTheme.typography.bodyLarge.copy(
+                                                    lineHeight = 28.sp,
+                                                    color = Color(0xFF334155)
+                                                ),
+                                                modifier = Modifier.padding(bottom = if (index == s.keyPoints.lastIndex) 0.dp else 12.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
 
-                    // Key Points
-                    if (s.keyPoints.isNotEmpty()) {
+                    // --- 4. 底部金句 (Quote) ---
+                    if (s.quote.isNotBlank()) {
                         item {
-                            SectionHeader(title = "要点 KEY POINTS", icon = Icons.Default.List)
-                        }
-
-                        itemsIndexed(s.keyPoints) { index, kp ->
-                            KeyPointItemView(item = kp, index = index)
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFEEF2FF)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.AutoAwesome, null, tint = Color(0xFF5D5FEF))
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(
+                                        text = "\"${s.quote}\"",
+                                        fontStyle = FontStyle.Italic,
+                                        color = Color(0xFF4338CA),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -180,70 +216,31 @@ fun KnowledgeCardDetailPage(
     }
 }
 
+// ================= 辅助组件 =================
+
 @Composable
-private fun SectionHeader(title: String, icon: ImageVector) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(20.dp)
-        )
+fun SectionHeader(icon: ImageVector, iconColor: Color, title: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
+        Icon(icon, null, tint = iconColor, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
-        Text(
-            text = title.uppercase(Locale.getDefault()),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        )
+        Text(title, style = MaterialTheme.typography.labelLarge, color = iconColor, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
-private fun KeyPointItemView(item: KeyPointItem, index: Int) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(12.dp))
-            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        // 左侧：icon 或序号
-        Box(
-            modifier = Modifier
-                .padding(top = 2.dp)
-                .size(24.dp)
-                .background(Color(0xFFEFF6FF), CircleShape),
-            contentAlignment = Alignment.Center
+fun SectionContent(icon: ImageVector, iconColor: Color, title: String, content: String) {
+    Column {
+        SectionHeader(icon, iconColor, title)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            val showIcon = item.icon.isNotBlank() && item.icon != "•"
             Text(
-                text = if (showIcon) item.icon else "${index + 1}",
-                fontSize = 12.sp,
-                color = if (showIcon) Color(0xFF0F172A) else MaterialTheme.colorScheme.primary,
-                fontWeight = if (showIcon) FontWeight.Normal else FontWeight.Bold
-            )
-        }
-
-        Spacer(Modifier.width(16.dp))
-
-        Column(modifier = Modifier.fillMaxWidth()) {
-            if (!item.title.isNullOrBlank()) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1E293B)
-                )
-                Spacer(Modifier.height(4.dp))
-            }
-            Text(
-                text = item.content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF475569),
-                lineHeight = 24.sp
+                text = content,
+                modifier = Modifier.padding(20.dp),
+                style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 28.sp, color = Color(0xFF334155))
             )
         }
     }

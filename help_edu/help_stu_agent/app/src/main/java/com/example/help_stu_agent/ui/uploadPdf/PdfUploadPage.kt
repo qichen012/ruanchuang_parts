@@ -44,10 +44,11 @@ import androidx.compose.ui.unit.sp
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 
+
 @Composable
 fun PdfUploadPage(
     onBack: (() -> Unit)? = null,
-    onSwitchToPhoto: () -> Unit // 👇 新增：切换到图片模式的回调
+    onSwitchToPhoto: () -> Unit
 ) {
     val context = LocalContext.current
     val wm = remember { WorkManager.getInstance(context) }

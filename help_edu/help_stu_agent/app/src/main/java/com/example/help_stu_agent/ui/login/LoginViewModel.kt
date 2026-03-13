@@ -29,22 +29,25 @@ class LoginViewModel : ViewModel() {
 
             try {
                 val response = RetrofitClient.apiService.login(AuthRequest(email, password))
-                if (response.isSuccessful && response.body()?.token != null) {
-                    // 登录成功
-                    _loginState.value = LoginState.Success(response.body()!!.token!!)
+                val body = response.body()
+
+                // 检查是否成功并且 token 和 user_id 都不为空
+                if (response.isSuccessful && body?.token != null && body?.user_id != null) {
+                    val token = body.token
+                    val userId = body.user_id // 提取后端返回的 user_id
+
+                    // 将两者一起传入 Success 状态
+                    _loginState.value = LoginState.Success(token, userId)
                 } else {
-                    // 登录失败 (密码错误等)
-                    val errorMsg = response.body()?.message ?: "登录失败，请检查账号密码"
+                    val errorMsg = body?.message ?: "登录失败，请检查账号密码"
                     _loginState.value = LoginState.Error(errorMsg)
                 }
             } catch (e: Exception) {
-                // 网络异常或服务器崩溃
                 _loginState.value = LoginState.Error("网络连接异常: ${e.localizedMessage}")
             }
         }
     }
 
-    // 重置状态 (例如在显示完错误提示后)
     fun resetState() {
         _loginState.value = LoginState.Idle
     }

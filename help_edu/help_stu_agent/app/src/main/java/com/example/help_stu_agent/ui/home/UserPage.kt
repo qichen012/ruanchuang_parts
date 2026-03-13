@@ -30,12 +30,22 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.nativeCanvas
+import android.graphics.Paint
+import android.graphics.Typeface
 
 @Composable
 fun UserPage(
+    userName: String,
+    userEmail: String,
+    userAge: Int,
+    userGender: String,
+    dataPoints: List<Float>,
+    peakTimeLabel: String,
     onGoMyAccount: () -> Unit,
     onLogout: () -> Unit
 ) {
+    val avatarInitial = userName.firstOrNull()?.uppercase() ?: "U"
     // 模拟前端的签到状态
     var isCheckedIn by remember { mutableStateOf(false) }
 
@@ -43,13 +53,12 @@ fun UserPage(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF6F9FE))
-            .verticalScroll(rememberScrollState()) // 增加滚动支持
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
             .statusBarsPadding()
     ) {
         Spacer(modifier = Modifier.height(32.dp))
 
-        // ========== 1. 用户信息与签到区域 ==========
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
@@ -60,18 +69,17 @@ fun UserPage(
                     .background(Color(0xFF818CF8), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text("A", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                // 使用动态首字母
+                Text(avatarInitial, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("Agent User", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
-                Text("stu.agent@university.edu", fontSize = 13.sp, color = Color(0xFF64748B))
+                Text(userName, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                Text(userEmail, fontSize = 13.sp, color = Color(0xFF64748B))
             }
         }
+        Spacer(modifier = Modifier.height(24.dp))
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // 签到按钮卡片
         val checkInBgColor by animateColorAsState(if (isCheckedIn) Color(0xFFECFDF5) else Color(0xFF5D5FEF), label = "checkInBg")
         val checkInTextColor by animateColorAsState(if (isCheckedIn) Color(0xFF059669) else Color.White, label = "checkInText")
 
@@ -107,7 +115,6 @@ fun UserPage(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // ========== 2. 活跃度折线图与高峰时段 ==========
         Text("ACTIVITY", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8), letterSpacing = 1.sp)
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -125,7 +132,7 @@ fun UserPage(
                 ) {
                     Column {
                         Text("Peak Time", fontSize = 14.sp, color = Color(0xFF64748B))
-                        Text("07:00 AM", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1E293B))
+                        Text(peakTimeLabel, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1E293B))
                     }
                     Box(
                         modifier = Modifier
@@ -138,8 +145,8 @@ fun UserPage(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 手绘平滑折线图
                 UsageLineChart(
+                    dataPoints = dataPoints,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(140.dp)
@@ -151,7 +158,6 @@ fun UserPage(
         Text("PREFERENCES", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8), letterSpacing = 1.sp)
         Spacer(modifier = Modifier.height(12.dp))
 
-        // ========== 3. 菜单列表 ==========
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -185,13 +191,15 @@ fun UserPage(
     }
 }
 
-// ========== 手绘平滑折线图组件 ==========
 @Composable
-fun UsageLineChart(modifier: Modifier = Modifier) {
-    // 模拟一天中 6 个时间段的活跃度数据 (比如 0点, 4点, 7点(最高峰), 12点, 16点, 20点)
-    val dataPoints = listOf(1f, 2f, 8f, 4f, 6f, 3f)
+fun UsageLineChart(
+    dataPoints: List<Float>,
+    modifier: Modifier = Modifier
+) {
+    //默认安全数组改为 24 个点
+    val isAllZero = dataPoints.isEmpty() || dataPoints.all { it == 0f }
+    val safeDataPoints = if (isAllZero) List(24) { 0f } else dataPoints
 
-    // 开场动画进度
     val animationProgress by animateFloatAsState(
         targetValue = 1f,
         animationSpec = tween(durationMillis = 1500),
@@ -200,76 +208,77 @@ fun UsageLineChart(modifier: Modifier = Modifier) {
 
     Canvas(modifier = modifier) {
         val w = size.width
-        val h = size.height
-        val maxPoint = dataPoints.maxOrNull() ?: 1f
-        val stepX = w / (dataPoints.size - 1)
+        val h = size.height - 30.dp.toPx()
+        val maxPoint = (safeDataPoints.maxOrNull() ?: 1f).coerceAtLeast(1f)
+        val stepX = w / (safeDataPoints.size - 1)
 
         val path = Path()
         val fillPath = Path()
-
         val points = mutableListOf<Offset>()
 
-        // 1. 计算所有坐标点
-        dataPoints.forEachIndexed { index, value ->
-            // 将 Y 轴高度进行反转（Canvas坐标系向下为正）并加上一点边距
+        // 1. 计算点坐标
+        safeDataPoints.forEachIndexed { index, value ->
             val x = index * stepX
-            val y = h - (value / maxPoint) * (h * 0.8f)
+            val ratio = if (isAllZero) 0f else (value / maxPoint)
+            val y = h - ratio * (h * 0.8f) // 留出顶部 20% 的间距
             points.add(Offset(x, y))
         }
 
-        // 2. 使用贝塞尔曲线 (Bezier Curve) 绘制平滑线条
+        // 2. 绘制平滑曲线
         path.moveTo(points.first().x, points.first().y)
         fillPath.moveTo(points.first().x, points.first().y)
-
         for (i in 0 until points.size - 1) {
             val p1 = points[i]
             val p2 = points[i + 1]
-            // 控制点，实现平滑弯曲
             val cx = (p1.x + p2.x) / 2f
             path.cubicTo(cx, p1.y, cx, p2.y, p2.x, p2.y)
             fillPath.cubicTo(cx, p1.y, cx, p2.y, p2.x, p2.y)
         }
 
-        // 3. 闭合填充路径以绘制底部渐变
+        // 3. 填充颜色
         fillPath.lineTo(points.last().x, h)
         fillPath.lineTo(points.first().x, h)
         fillPath.close()
 
-        // 绘制带透明度的底部渐变 (结合动画)
-        val gradientAlpha = 0.3f * animationProgress
         drawPath(
             path = fillPath,
             brush = Brush.verticalGradient(
-                colors = listOf(Color(0xFF5D5FEF).copy(alpha = gradientAlpha), Color.Transparent),
+                colors = listOf(Color(0xFF5D5FEF).copy(alpha = 0.3f * animationProgress), Color.Transparent),
                 startY = 0f,
                 endY = h
             )
         )
 
-        // 绘制主折线
-        drawPath(
-            path = path,
-            color = Color(0xFF5D5FEF),
-            style = Stroke(width = 3.dp.toPx())
-        )
+        drawPath(path = path, color = Color(0xFF5D5FEF), style = Stroke(width = 3.dp.toPx()))
 
-        // 4. 找到最高点并绘制 HighLight 原点
-        val peakIndex = dataPoints.indexOf(maxPoint)
-        val peakPoint = points[peakIndex]
+        // 4. 绘制时间轴刻度 (00, 06, 12, 18, 23)
+        val textPaint = Paint().apply {
+            color = android.graphics.Color.parseColor("#94A3B8")
+            textSize = 10.sp.toPx()
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+        }
 
-        drawCircle(
-            color = Color.White,
-            radius = 6.dp.toPx(),
-            center = peakPoint
-        )
-        drawCircle(
-            color = Color(0xFF5D5FEF),
-            radius = 4.dp.toPx(),
-            center = peakPoint
-        )
+        val labels = listOf(0, 6, 12, 18, 23)
+        labels.forEach { hour ->
+            val x = hour * stepX
+            drawContext.canvas.nativeCanvas.drawText(
+                String.format("%02d", hour),
+                x,
+                size.height - 5.dp.toPx(),
+                textPaint
+            )
+        }
 
-        // 绘制底部的 X 轴时间刻度文字
-        // Compose Canvas 画文字略复杂，为了保持轻量纯粹的 UI，这里用简单的水平线暗示基准
+        // 5. 绘制高峰点圆圈
+        if (!isAllZero) {
+            val peakIndex = safeDataPoints.indexOf(safeDataPoints.maxOrNull() ?: 0f)
+            val peakPoint = points[peakIndex]
+            drawCircle(Color.White, radius = 6.dp.toPx(), center = peakPoint)
+            drawCircle(Color(0xFF5D5FEF), radius = 4.dp.toPx(), center = peakPoint)
+        }
+
+        // 底部基准线
         drawLine(
             color = Color(0xFFE2E8F0),
             start = Offset(0f, h),
@@ -279,7 +288,7 @@ fun UsageLineChart(modifier: Modifier = Modifier) {
     }
 }
 
-// 设置菜单行组件 (保持不变)
+// 设置菜单行组件
 @Composable
 fun SettingsRow(
     icon: ImageVector,
@@ -313,5 +322,40 @@ fun SettingsRow(
             contentDescription = "Go",
             tint = Color(0xFFCBD5E1)
         )
+    }
+}
+
+@Composable
+fun ProfileInfoCard(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    iconColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(iconColor.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(imageVector = icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp))
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(label, fontSize = 12.sp, color = Color(0xFF94A3B8))
+                Text(value, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+            }
+        }
     }
 }

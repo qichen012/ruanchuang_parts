@@ -13,18 +13,27 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel // [新增导入]
+import com.example.help_stu_agent.data.local.UserManager
+
 import com.example.help_stu_agent.designsystem.components.FloatingGlassTabBar
 import com.example.help_stu_agent.designsystem.components.TabItem
-
 import com.example.help_stu_agent.ui.home.BottomNavItem
 import com.example.help_stu_agent.ui.home.FeaturesPage
 import com.example.help_stu_agent.ui.home.HomePage
 import com.example.help_stu_agent.ui.home.UserPage
+import com.example.help_stu_agent.ui.home.UserViewModel // [新增导入]
+import com.example.help_stu_agent.ui.home.AppUsageTracker // [新增导入]
 import kotlinx.coroutines.launch
 
 @Composable
@@ -41,7 +50,8 @@ fun MainHomePage(
     onGoMyAccount: () -> Unit,
     onLogout: () -> Unit,
     onGoPastContent: () -> Unit,
-    onGoOpenSource: () -> Unit
+    onGoOpenSource: () -> Unit,
+    userViewModel: UserViewModel = viewModel()
 ) {
     val pages = listOf(
         BottomNavItem.Home,
@@ -49,12 +59,25 @@ fun MainHomePage(
         BottomNavItem.User
     )
 
-    // 初始化 PagerState
     val pagerState = rememberPagerState(pageCount = { pages.size })
-    // 用于在点击底部 Tab 时触发滚动动画的协程作用域
     val coroutineScope = rememberCoroutineScope()
 
-    // 底部导航栏的 UI 配置模型
+    val context = LocalContext.current
+    val userManager = remember { UserManager(context) }
+
+    val currentUserId by userManager.userIdFlow.collectAsState(initial = null)
+
+    LaunchedEffect(currentUserId) {
+        currentUserId?.let { id ->
+            userViewModel.fetchUsageStats(id)
+            userViewModel.fetchUserInfo(id)
+        }
+    }
+
+    currentUserId?.let { id ->
+        AppUsageTracker(userId = id, viewModel = userViewModel)
+    }
+
     val tabItems = listOf(
         TabItem(icon = Icons.Outlined.Home, label = "Home", navItem = BottomNavItem.Home),
         TabItem(icon = Icons.Outlined.GridView, label = "Features", navItem = BottomNavItem.Features),
@@ -73,7 +96,6 @@ fun MainHomePage(
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
-                // 可选：禁用超出边缘的拉伸回弹效果，让页面显得更干脆
                 beyondViewportPageCount = 1
             ) { page ->
                 when (pages[page]) {
@@ -98,20 +120,28 @@ fun MainHomePage(
                     }
                     BottomNavItem.User -> {
                         UserPage(
+                            userName = userViewModel.userName,
+                            userEmail = userViewModel.userEmail,
+                            dataPoints = userViewModel.usageDataPoints,
+                            peakTimeLabel = userViewModel.peakTimeLabel,
+                            userAge = userViewModel.userAge,
+                            userGender = userViewModel.userGender,
                             onGoMyAccount = onGoMyAccount,
-                            onLogout = onLogout
+                            onLogout = {
+                                coroutineScope.launch {
+                                    userManager.clearUserSession()
+                                    onLogout()
+                                }
+                            }
                         )
                     }
                 }
             }
 
-            // 悬浮导航栏
             FloatingGlassTabBar(
                 tabs = tabItems,
-                // 当前选中的 Index 直接绑定 pagerState.currentPage
                 selectedIndex = pagerState.currentPage,
                 onTabSelected = { index ->
-                    // 点击 Tab 时，触发页面平滑滚动
                     coroutineScope.launch {
                         pagerState.animateScrollToPage(index)
                     }

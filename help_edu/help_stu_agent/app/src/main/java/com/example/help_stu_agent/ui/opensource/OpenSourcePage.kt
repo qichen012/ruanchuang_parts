@@ -31,7 +31,7 @@ data class GitHubProjectInfo(
     val stars: String,
     val forks: String,
     val tag: String,
-    val isAvatar: Boolean // 用来区分左侧头像是图标还是人像占位
+    val isAvatar: Boolean
 )
 
 @Composable
@@ -78,8 +78,6 @@ fun OpenSourcePage(
             Text(
                 text = "Open Source Explorer",
                 fontSize = 18.sp,
-                fontFamily = FontFamily.Serif,
-                fontStyle = FontStyle.Italic,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1E293B)
             )
@@ -89,13 +87,6 @@ fun OpenSourcePage(
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = "GitHub Projects",
-                fontSize = 38.sp,
-                fontFamily = FontFamily.Serif,
-                color = Color(0xFF1E293B)
-            )
-            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "Discover world-class open source projects and their contributions to the community.",
                 fontSize = 15.sp,

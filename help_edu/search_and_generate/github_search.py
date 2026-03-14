@@ -34,7 +34,7 @@ params = {
 response = requests.get(url, headers=headers, params=params)
 if response.status_code == 200:
     for repo in response.json()["items"]:
-        print(f"{repo['full_name']} - ⭐ {repo['stargazers_count']}\n{repo['html_url']}")
+        print(f"{repo['full_name']} - ⭐ {repo['stargazers_count']}\n{repo['html_url']}\n{repo['blobs_url']}")
         time.sleep(1)
         print(get_readme(repo['owner']['login'], repo['name']))
         print("-" * 80)

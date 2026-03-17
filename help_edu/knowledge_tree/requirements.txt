@@ -1,0 +1,9 @@
+# ChromaDB 上下文压缩模块依赖
+chromadb>=0.4.22
+chromadb-utils
+sentence-transformers
+fastapi>=0.100.0
+uvicorn>=0.23.0
+pydantic>=2.0.0
+openai
+python-dotenv

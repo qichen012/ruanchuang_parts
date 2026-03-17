@@ -59,4 +59,17 @@ class KnowledgeCardRepository(context: Context) {
         dao.upsert(entity)
         return id
     }
+
+    suspend fun updateCardJson(id: String, newRawJson: String) {
+        // 1. 获取数据库中现有的卡片
+        val existing = dao.getById(id) ?: return
+        // 2. 将新的 JSON 覆盖进去
+        val updatedEntity = existing.copy(
+            rawJson = newRawJson
+        )
+        // 3. 执行更新 (upsert 会根据主键 id 覆盖旧数据)
+        dao.upsert(updatedEntity)
+    }
 }
+
+

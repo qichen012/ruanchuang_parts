@@ -9,9 +9,10 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [
         KnowledgeCardEntity::class,
-        KnowledgeTreeEntity::class
+        KnowledgeTreeEntity::class,
+        EliteIdeaEntity::class
     ],
-    version = 2, // 你如果原来是 1，这里必须改成 2
+    version = 3,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -19,6 +20,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun knowledgeCardDao(): KnowledgeCardDao
 
     abstract fun knowledgeTreeDao(): KnowledgeTreeDao
+
+    abstract fun eliteIdeaDao(): EliteIdeaDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null

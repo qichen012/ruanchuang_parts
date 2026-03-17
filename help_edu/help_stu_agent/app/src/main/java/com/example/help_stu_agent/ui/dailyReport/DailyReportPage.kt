@@ -1,4 +1,4 @@
-package com.example.help_stu_agent.ui.treeHistory
+package com.example.help_stu_agent.ui.dailyReport
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -9,10 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,33 +21,33 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.help_stu_agent.data.db.KnowledgeTreeEntity
-import com.example.help_stu_agent.data.repo.KnowledgeTreeRepository
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.example.help_stu_agent.data.repo.KnowledgeCardRepository
+import com.example.help_stu_agent.ui.home.ReflectionItem
+import com.example.help_stu_agent.ui.home.SparklesIcon
 import kotlin.math.absoluteValue
 
 @Composable
-fun KnowledgeTreeHistoryPage(
-    onOpen: (String) -> Unit,
-    onBack: () -> Unit
+fun DailyReportPage(
+    onBack: () -> Unit,
+    onOpenKnowledgeCard: (String) -> Unit
 ) {
     val context = LocalContext.current
-    val repo = remember { KnowledgeTreeRepository(context) }
+    val repo = remember { KnowledgeCardRepository(context) }
+    val entities by repo.observeAll().collectAsState(initial = emptyList())
 
-    var list by remember { mutableStateOf<List<KnowledgeTreeEntity>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        loading = true
-        list = repo.listAll()
-        loading = false
+    val items = remember(entities) {
+        entities.asReversed().map { e ->
+            val color = pickAccentColor(e.id)
+            ReflectionItem(
+                id = e.id,
+                title = e.headerTitle ?: (e.pdfDisplayName ?: "Knowledge Card"),
+                quote = e.footerQuote ?: "",
+                iconColor = color
+            )
+        }
     }
 
-    val fmt = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
-
-    // 背景色：素雅的米白/浅灰色
+    // 背景色：与 KnowledgeTree 一致的素雅颜色
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -58,17 +55,17 @@ fun KnowledgeTreeHistoryPage(
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+
+            // --- 统一的 Sparky 风格导航栏 ---
             SparkyStyleHeader(
-                title = "Knowledge Tree",
+                title = "Daily Report",
                 onBack = onBack
             )
 
-            // --- 副标题说明文本 ---
+            // --- 增加与知识树一致的副标题说明 ---
             Text(
-                text = "Review and expand your previously generated\nknowledge structures.",
+                text = "Review your daily generated insights\nand reflection cards.",
                 fontSize = 15.sp,
                 color = Color(0xFF7A7A7A),
                 lineHeight = 22.sp,
@@ -77,42 +74,19 @@ fun KnowledgeTreeHistoryPage(
 
             Spacer(Modifier.height(16.dp))
 
-            // --- 列表或加载状态 ---
-            if (loading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.TopCenter
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.padding(top = 40.dp),
-                        color = Color(0xFF00B493)
-                    )
-                }
-            } else if (list.isEmpty()) {
-                EmptyTreeHistoryState()
+            if (items.isEmpty()) {
+                EmptyDailyReportState()
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 32.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    itemsIndexed(list, key = { _, e -> e.id }) { index, e ->
-                        val accentColors = listOf(
-                            Color(0xFF00B493), // 亮青色
-                            Color(0xFFFF7300), // 活力橙
-                            Color(0xFF2C2522), // 深咖色
-                            Color(0xFF007A66)  // 深墨绿
-                        )
-                        val accent = accentColors[(e.id.hashCode().absoluteValue) % accentColors.size]
-
-                        TreeHistoryCard(
-                            title = e.title.ifBlank { "Knowledge Structure" },
-                            subtitle = e.pdfDisplayName,
-                            timeText = fmt.format(Date(e.createdAt)),
-                            nodeCount = e.nodeCount ?: (5..30).random(),
-                            accent = accent,
+                    itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
+                        DailyReportListCard(
+                            item = item,
                             isFirst = index == 0,
-                            onClick = { onOpen(e.id) }
+                            onClick = { onOpenKnowledgeCard(item.id) }
                         )
                     }
                 }
@@ -121,15 +95,14 @@ fun KnowledgeTreeHistoryPage(
     }
 }
 
-// 提取的 Sparky 风格通用导航栏
+// 复用导航栏样式
 @Composable
-fun SparkyStyleHeader(title: String, onBack: () -> Unit) {
+private fun SparkyStyleHeader(title: String, onBack: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
-        // 圆形返回按钮
         Surface(
             onClick = onBack,
             shape = CircleShape,
@@ -146,7 +119,6 @@ fun SparkyStyleHeader(title: String, onBack: () -> Unit) {
             }
         }
 
-        // 居中标题
         Text(
             text = title,
             fontSize = 20.sp,
@@ -158,21 +130,17 @@ fun SparkyStyleHeader(title: String, onBack: () -> Unit) {
 }
 
 @Composable
-private fun TreeHistoryCard(
-    title: String,
-    subtitle: String?,
-    timeText: String,
-    nodeCount: Int,
-    accent: Color,
+private fun DailyReportListCard(
+    item: ReflectionItem,
     isFirst: Boolean,
     onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(32.dp),
+        shape = RoundedCornerShape(32.dp), // 与知识树卡片保持相同的圆角
         color = Color.White,
-        shadowElevation = 2.dp
+        shadowElevation = 2.dp // 素雅风格的微阴影
     ) {
         Row(
             modifier = Modifier
@@ -180,34 +148,33 @@ private fun TreeHistoryCard(
                 .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 左侧图标框
+            // 左侧图标块：变更为更饱满的大色块圆角
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .background(accent, RoundedCornerShape(20.dp)),
+                    .background(item.iconColor, RoundedCornerShape(20.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                TreeIcon(modifier = Modifier.size(32.dp), color = Color.White)
+                SparklesIcon(modifier = Modifier.size(32.dp), color = Color.White)
             }
 
             Spacer(Modifier.width(16.dp))
 
-            // 文本信息区
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = title,
+                    text = item.title,
                     fontSize = 17.sp,
                     color = Color(0xFF222222),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (!subtitle.isNullOrBlank() && subtitle != title) {
+                if (item.quote.isNotBlank()) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = subtitle,
+                        text = "“${item.quote}”",
                         fontSize = 14.sp,
-                        fontFamily = FontFamily.Serif,
+                        fontFamily = FontFamily.Serif, // 与知识树副标题呼应的衬线体
                         color = Color(0xFF555555),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -216,8 +183,9 @@ private fun TreeHistoryCard(
 
                 Spacer(Modifier.height(8.dp))
 
+                // 底部标签与 KnowledgeTree 保持相同的排版语言
                 Text(
-                    text = "$timeText • $nodeCount CONNECTIONS",
+                    text = "REFLECTION • DAILY INSIGHT",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF999999),
@@ -227,7 +195,7 @@ private fun TreeHistoryCard(
 
             Spacer(Modifier.width(12.dp))
 
-            // 右侧圆形按钮
+            // 右侧圆形指示按钮
             val btnBgColor = if (isFirst) Color(0xFF222222) else Color(0xFFF7F7F7)
             val iconTint = if (isFirst) Color.White else Color(0xFFCCCCCC)
 
@@ -251,7 +219,7 @@ private fun TreeHistoryCard(
 }
 
 @Composable
-private fun EmptyTreeHistoryState() {
+private fun EmptyDailyReportState() {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -265,21 +233,21 @@ private fun EmptyTreeHistoryState() {
             shadowElevation = 2.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
-                TreeIcon(modifier = Modifier.size(36.dp), color = Color(0xFF00B493))
+                SparklesIcon(modifier = Modifier.size(36.dp), color = Color(0xFF6366F1))
             }
         }
 
         Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "No Knowledge Trees",
+            text = "No Knowledge Cards",
             fontFamily = FontFamily.Serif,
             fontSize = 20.sp,
             color = Color(0xFF222222)
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Once you analyze a document, your structured\nlearning connections will appear here.",
+            text = "Upload a PDF to generate your first card,\nthen your history will appear here.",
             fontSize = 14.sp,
             color = Color(0xFF888888),
             modifier = Modifier.padding(horizontal = 32.dp),
@@ -287,4 +255,17 @@ private fun EmptyTreeHistoryState() {
             textAlign = TextAlign.Center
         )
     }
+}
+
+private fun pickAccentColor(id: String): Color {
+    val palette = listOf(
+        Color(0xFF6366F1), // indigo
+        Color(0xFF0EA5E9), // sky
+        Color(0xFF10B981), // emerald
+        Color(0xFFF59E0B), // amber
+        Color(0xFFEF4444), // red
+        Color(0xFF8B5CF6)  // violet
+    )
+    val idx = (id.hashCode().absoluteValue) % palette.size
+    return palette[idx]
 }

@@ -1,4 +1,4 @@
-package com.example.help_stu_agent.ui.meeting
+package com.example.help_stu_agent.ui.meetingMem
 
 import android.content.Context
 import android.content.Intent

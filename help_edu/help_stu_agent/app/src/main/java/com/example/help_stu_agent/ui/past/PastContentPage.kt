@@ -1,61 +1,150 @@
 package com.example.help_stu_agent.ui.past
 
-import androidx.compose.foundation.BorderStroke
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import com.example.help_stu_agent.data.local.UserManager
+
+@Serializable
+data class RecommendBrief(
+    val posterior_insight: String = "",
+    val key_concepts: String = "",
+    val prompt_questions: List<String> = emptyList()
+)
+
+suspend fun fetchRecommendation(userId: Int): RecommendBrief? = withContext(Dispatchers.IO) {
+    val url = "http://10.29.142.138:8001/recommend?user_id=$userId&limit=1"
+
+    val client = OkHttpClient()
+    val request = Request.Builder().url(url).build()
+
+    try {
+        val response = client.newCall(request).execute()
+        val jsonStr = response.body?.string() ?: return@withContext null
+
+        // 在 Logcat 中输出拿到的原始 JSON
+        Log.d("RecommendAPI", "成功拿到 JSON (UserID: $userId): $jsonStr")
+
+        val jsonParser = Json { ignoreUnknownKeys = true }
+        jsonParser.decodeFromString<RecommendBrief>(jsonStr)
+    } catch (e: Exception) {
+        Log.e("RecommendAPI", "请求失败", e)
+        null
+    }
+}
 
 @Composable
 fun PastContentPage(
     onBack: () -> Unit,
-    onWaveMenuClick: () -> Unit = {},
-    onHeartClick: () -> Unit = {},
-    onRightIndicatorClick: () -> Unit = {}
+    onWaveMenuClick: () -> Unit = {}
 ) {
+    val scrollState = rememberScrollState()
+
+    // 解决下拉返回白屏的锁
+    var overscrollY by remember { mutableFloatStateOf(0f) }
+    var hasTriggeredBack by remember { mutableStateOf(false) }
+
+    // === 网络数据状态 ===
+    var briefData by remember { mutableStateOf<RecommendBrief?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isError by remember { mutableStateOf(false) }
+
+    // === 1. 获取 Context 并初始化 UserManager ===
+    val context = LocalContext.current
+    val userManager = remember { UserManager(context) }
+
+    // === 2. 收集 userId ===
+    val currentUserId by userManager.userIdFlow.collectAsState(initial = null)
+
+    // === 3. 当 userId 准备好时，发起网络请求 ===
+    LaunchedEffect(currentUserId) {
+        currentUserId?.let { userId ->
+            isLoading = true
+            isError = false
+
+            val data = fetchRecommendation(userId)
+            if (data != null) {
+                briefData = data
+            } else {
+                isError = true
+            }
+            isLoading = false
+        }
+    }
+
+    // 下拉返回的嵌套滚动拦截器
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (scrollState.value == 0 && available.y > 0) {
+                    if (!hasTriggeredBack) {
+                        overscrollY += available.y
+                        if (overscrollY > 150f) {
+                            hasTriggeredBack = true
+                            onBack()
+                        }
+                    }
+                    return available
+                } else if (available.y < 0) {
+                    overscrollY = 0f
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                overscrollY = 0f
+                hasTriggeredBack = false
+                return super.onPreFling(available)
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
             .statusBarsPadding()
             .navigationBarsPadding()
-            .draggable(
-                orientation = Orientation.Vertical,
-                state = rememberDraggableState { delta ->
-                    if (delta > 20) onBack()
-                }
-            )
+            .nestedScroll(nestedScrollConnection)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
-            // 顶部的小横条（暗示可以下拉返回）
+            // 顶部横条
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -69,7 +158,7 @@ fun PastContentPage(
                 )
             }
 
-            // 头部：图标、日期、喜欢按钮
+            // 头部信息栏 (日期、波浪)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -77,17 +166,11 @@ fun PastContentPage(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(Color.Black, CircleShape)
-                        .clickable { onWaveMenuClick() },
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    WaveIcon(modifier = Modifier.size(24.dp), color = Color.White)
-                }
-
-                Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         text = "2.1",
                         fontSize = 44.sp,
@@ -106,116 +189,129 @@ fun PastContentPage(
                     )
                 }
 
-                Surface(
-                    modifier = Modifier.size(48.dp),
-                    shape = CircleShape,
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-                    color = Color.White,
-                    onClick = onHeartClick
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Default.FavoriteBorder,
-                            null,
-                            tint = Color(0xFF1E293B),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
+                // 占位 Box 以保持中间文字居中对称（代替原来的心形图标位置）
+                Spacer(modifier = Modifier.size(48.dp))
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 内容区
-            Column(modifier = Modifier.padding(horizontal = 28.dp)) {
-                Row {
-                    Text(
-                        "#",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E293B),
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "卷积神经网络 (CNN): 核心是局部连接和权值共享，通过卷积层提取特征，池化层进行降维和特征聚合（如最大池化、平均池化），最终通过全连接层输出。它擅长处理具有空间结构的数据，如图像。",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        lineHeight = 28.sp,
-                        color = Color(0xFF1E293B)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(40.dp))
-
-                Row {
-                    Text(
-                        "#",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E293B),
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                color = Color(0xFF007AFF),
-                                shape = RoundedCornerShape(4.dp),
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text("7", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 28.dp)
+                    .padding(bottom = 60.dp) // 底部留白
+            ) {
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(300.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Color(0xFF1E293B))
+                        }
+                    }
+                    isError -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(300.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                text = "循环神经网络 (RNN): 核心是循环结构和状态记忆。它的隐藏层 t 不仅依赖于当前输入 x_t，还依赖于上一时刻的隐藏状态 s_{t-1}，从而能处理序列数据。但存在长期依赖问题。",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                lineHeight = 28.sp,
-                                color = Color(0xFF1E293B)
+                                text = "加载失败，请检查网络或后端服务。",
+                                color = Color.Red,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                    briefData != null -> {
+                        val data = briefData!!
+
+                        // 1. 核心洞察
+                        if (data.posterior_insight.isNotBlank()) {
+                            ContentSection(
+                                title = "核心洞察",
+                                content = data.posterior_insight,
+                                iconNumber = "1"
+                            )
+                            Spacer(modifier = Modifier.height(40.dp))
+                        }
+
+                        // 2. 关键概念
+                        if (data.key_concepts.isNotBlank()) {
+                            ContentSection(
+                                title = "关键概念",
+                                content = data.key_concepts,
+                                iconNumber = "2"
+                            )
+                            Spacer(modifier = Modifier.height(40.dp))
+                        }
+
+                        // 3. 启发问题
+                        if (data.prompt_questions.isNotEmpty()) {
+                            val questionsStr = data.prompt_questions.joinToString(separator = "\n") { "• $it" }
+
+                            ContentSection(
+                                title = "启发问题",
+                                content = questionsStr,
+                                iconNumber = "3"
                             )
                         }
                     }
                 }
             }
         }
-
-        // 右侧悬浮指示器
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 12.dp)
-                .clickable { onRightIndicatorClick() },
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text("费曼", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                null,
-                tint = Color(0xFF818CF8),
-                modifier = Modifier.size(32.dp)
-            )
-            Text("学习法", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
-        }
     }
 }
 
 @Composable
-fun WaveIcon(modifier: Modifier = Modifier, color: Color) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val stroke = 2.5.dp.toPx()
-        for (i in 0..2) {
-            val y = h * (0.35f + i * 0.15f)
-            val path = Path().apply {
-                moveTo(w * 0.2f, y)
-                quadraticTo(w * 0.35f, y - 4.dp.toPx(), w * 0.5f, y)
-                quadraticTo(w * 0.65f, y + 4.dp.toPx(), w * 0.8f, y)
+fun ContentSection(title: String, content: String, iconNumber: String) {
+    Row {
+        // 左侧的 # 号和数字方块
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "#",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E293B),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                color = Color(0xFF007AFF),
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier.size(24.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = iconNumber,
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
-            drawPath(path, color = color, style = Stroke(width = stroke))
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // 右侧的标题和正文
+        Column {
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                color = Color(0xFF64748B),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+            )
+            Text(
+                text = content,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 28.sp,
+                color = Color(0xFF1E293B)
+            )
         }
     }
 }

@@ -26,7 +26,7 @@
             </intent-filter>
         </activity>
         <service
-            android:name=".ui.meeting.MeetingRecorderService"
+            android:name=".ui.meetingMem.MeetingRecorderService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
     </application>

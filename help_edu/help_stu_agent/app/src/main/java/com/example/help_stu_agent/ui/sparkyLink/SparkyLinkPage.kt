@@ -1,4 +1,4 @@
-package com.example.help_stu_agent.ui.sparky
+package com.example.help_stu_agent.ui.sparkyLink
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.BorderStroke

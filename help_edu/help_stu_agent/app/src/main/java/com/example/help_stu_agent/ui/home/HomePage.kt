@@ -42,6 +42,7 @@ import kotlin.math.sqrt
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.help_stu_agent.data.repo.KnowledgeCardRepository
+import org.json.JSONObject
 
 enum class Screen { Home, Reading }
 
@@ -64,7 +65,7 @@ data class HomeClickCallbacks(
 @Composable
 fun HomePage(
     onOpenKnowledgeCard: (String) -> Unit,
-    onGoPastContent: () -> Unit // 新增：通过路由跳转到往日内容页面
+    onGoPastContent: () -> Unit
 ) {
     var currentScreen by remember { mutableStateOf(Screen.Home) }
     var selectedCard by remember { mutableStateOf<ReflectionItem?>(null) }
@@ -74,30 +75,43 @@ fun HomePage(
     val cardEntities by cardRepo.observeAll().collectAsState(initial = emptyList())
 
     val reflections = remember(cardEntities) {
-        if (cardEntities.isNotEmpty()) {
-            cardEntities.map { e ->
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        val startOfToday = calendar.timeInMillis
+
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 23)
+        calendar.set(java.util.Calendar.MINUTE, 59)
+        calendar.set(java.util.Calendar.SECOND, 59)
+        calendar.set(java.util.Calendar.MILLISECOND, 999)
+        val endOfToday = calendar.timeInMillis
+
+        val todaysCards = cardEntities.filter { it.createdAt in startOfToday..endOfToday }
+
+        if (todaysCards.isNotEmpty()) {
+            todaysCards.map { e ->
+                // 解析新版的 JSON 格式提取 posterior_insight
+                val json = runCatching { JSONObject(e.rawJson) }.getOrNull()
+                val dataNode = json?.optJSONObject("data") ?: json
+                val insight = dataNode?.optString("posterior_insight")
+                    ?: "正在生成今日的专属洞察..."
+
                 ReflectionItem(
                     id = e.id,
-                    title = e.headerTitle ?: (e.pdfDisplayName ?: "知识卡片"),
-                    quote = e.footerQuote ?: ""
+                    title = "今日我学了什么？",
+                    quote = insight,
+                    iconColor = Color(0xFF5D5FEF)
                 )
             }
         } else {
             listOf(
                 ReflectionItem(
                     id = "demo_01",
-                    title = "上传 PDF 生成知识卡片",
-                    quote = "从历史中回看你的知识结构。"
-                ),
-                ReflectionItem(
-                    id = "demo_02",
-                    title = "支持知识树结构化",
-                    quote = "结构化比堆材料更重要。"
-                ),
-                ReflectionItem(
-                    id = "demo_03",
-                    title = "自动保存为历史",
-                    quote = "让知识形成网络，而不是列表。"
+                    title = "今日我学了什么？",
+                    quote = "上传 PDF 或图片，AI 将自动为你提取核心洞察与每日简报。",
+                    iconColor = Color(0xFF5D5FEF)
                 )
             )
         }
@@ -105,38 +119,19 @@ fun HomePage(
 
     val callbacks = remember {
         HomeClickCallbacks(
-            onReflectionCardClick = { item ->
-                onOpenKnowledgeCard(item.id)
-            },
-            onSwipeUpToPast = {
-                onGoPastContent() // 触发外部传入的路由跳转
-            },
-            onPastWaveMenuClick = {
-                // TODO:
-            },
-            onPastHeartClick = {
-                // TODO: 收藏/喜欢（预留）
-            },
-            onSaveReflectionClick = {
-                // TODO: 保存 reflection（预留）
-            }
+            onReflectionCardClick = { item -> onOpenKnowledgeCard(item.id) },
+            onSwipeUpToPast = { onGoPastContent() }
         )
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedContent(
             targetState = currentScreen,
-            transitionSpec = {
-                fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
-            },
+            transitionSpec = { fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400)) },
             label = "ScreenTransition"
         ) { screen ->
             when (screen) {
-                Screen.Home -> ReflectionHomeScreen(
-                    items = reflections,
-                    callbacks = callbacks
-                )
-
+                Screen.Home -> ReflectionHomeScreen(items = reflections, callbacks = callbacks)
                 Screen.Reading -> if (selectedCard != null) {
                     ReadingModeScreen(
                         item = selectedCard!!,
@@ -154,7 +149,6 @@ fun ReflectionHomeScreen(
     items: List<ReflectionItem>,
     callbacks: HomeClickCallbacks
 ) {
-    // 获取当前时间并动态生成问候语
     val greeting = remember {
         val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         when (hour) {
@@ -184,32 +178,14 @@ fun ReflectionHomeScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-
             Spacer(modifier = Modifier.height(40.dp))
-
-            // 使用动态计算的问候语
-            Text(
-                text = greeting,
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E293B),
-                modifier = Modifier.padding(horizontal = 28.dp)
-            )
-            Text(
-                "Ready to reflect on your day?",
-                fontSize = 18.sp,
-                color = Color(0xFF64748B),
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp)
-            )
-
+            Text(text = greeting, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B), modifier = Modifier.padding(horizontal = 28.dp))
+            Text("Ready to reflect on your day?", fontSize = 18.sp, color = Color(0xFF64748B), fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp))
             Spacer(modifier = Modifier.height(32.dp))
 
             FlipPager(
                 items = items,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 28.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),
                 onCardClick = { callbacks.onReflectionCardClick(it) }
             )
 
@@ -219,28 +195,17 @@ fun ReflectionHomeScreen(
                     .weight(1f)
                     .draggable(
                         orientation = Orientation.Vertical,
-                        state = rememberDraggableState { delta ->
-                            if (delta < -20) callbacks.onSwipeUpToPast()
-                        }
+                        state = rememberDraggableState { delta -> if (delta < -20) callbacks.onSwipeUpToPast() }
                     )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = null // 移除点击涟漪，让手势区更自然
+                        indication = null
                     ) { callbacks.onSwipeUpToPast() },
                 contentAlignment = Alignment.BottomCenter
             ) {
-                // 保持 padding 避免被 TabBar 遮挡
-                Column(
-                    modifier = Modifier.padding(bottom = 110.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Column(modifier = Modifier.padding(bottom = 110.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("上滑探索", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569))
-                    Icon(
-                        Icons.Default.KeyboardArrowUp,
-                        null,
-                        tint = Color(0xFF818CF8),
-                        modifier = Modifier.size(36.dp)
-                    )
+                    Icon(Icons.Default.KeyboardArrowUp, null, tint = Color(0xFF818CF8), modifier = Modifier.size(36.dp))
                     Text("往日记忆", fontSize = 13.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Medium)
                 }
             }
@@ -251,92 +216,59 @@ fun ReflectionHomeScreen(
 @Composable
 fun ReflectionCard(item: ReflectionItem, onClick: () -> Unit) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 20.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
         contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .height(400.dp)
-                .offset(x = 12.dp, y = 12.dp)
-                .rotate(3f)
-                .background(Color(0xFFE8EFFF), RoundedCornerShape(40.dp))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.96f)
-                .height(400.dp)
-                .offset(x = 6.dp, y = 6.dp)
-                .rotate(1.5f)
-                .background(Color(0xFFF1F5FF), RoundedCornerShape(40.dp))
-        )
+        Box(modifier = Modifier.fillMaxWidth(0.92f).height(400.dp).offset(x = 12.dp, y = 12.dp).rotate(3f).background(Color(0xFFE8EFFF), RoundedCornerShape(40.dp)))
+        Box(modifier = Modifier.fillMaxWidth(0.96f).height(400.dp).offset(x = 6.dp, y = 6.dp).rotate(1.5f).background(Color(0xFFF1F5FF), RoundedCornerShape(40.dp)))
 
         Card(
             onClick = onClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(480.dp) // 稍微加高一点，留白更美观
-                .shadow(12.dp, RoundedCornerShape(40.dp)),
+            modifier = Modifier.fillMaxWidth().height(480.dp).shadow(12.dp, RoundedCornerShape(40.dp)),
             shape = RoundedCornerShape(40.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(modifier = Modifier.padding(32.dp).fillMaxSize()) {
-                // 1. 顶部图标
+                // 图标
                 Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .background(Color(0xFFF1F5F9), RoundedCornerShape(20.dp)),
+                    modifier = Modifier.size(64.dp).background(Color(0xFFEEF2FF), RoundedCornerShape(20.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     SparklesIcon(modifier = Modifier.size(32.dp), color = item.iconColor)
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                // 2.  (header.title)
+                // 标题
                 Text(
                     text = item.title,
-                    fontSize = 26.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color(0xFF0F172A),
-                    lineHeight = 34.sp,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // 3.  (footer.quote)
-                if (item.quote.isNotBlank()) {
-                    Column {
-                        HorizontalDivider(
-                            modifier = Modifier.width(40.dp),
-                            thickness = 3.dp,
-                            color = item.iconColor.copy(alpha = 0.3f)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "“${item.quote}”",
-                            fontSize = 18.sp,
-                            fontStyle = FontStyle.Italic,
-                            color = Color(0xFF64748B),
-                            lineHeight = 28.sp
-                        )
-                    }
-                }
+                // 正文洞察 (Posterior Insight)
+                Text(
+                    text = item.quote,
+                    fontSize = 16.sp,
+                    color = Color(0xFF475569),
+                    lineHeight = 26.sp,
+                    maxLines = 6, // 限制行数避免溢出
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                // 4. 按钮
                 Button(
                     onClick = onClick,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5D5FEF)),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(16.dp) // 匹配设计图
                 ) {
-                    Text("view", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("View", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

@@ -108,9 +108,8 @@ object PdfBackendPipeline {
         pdfUri: Uri,
         onUpdate: (PdfUiUpdate) -> Unit
     ): String = withContext(Dispatchers.IO) {
-        onUpdate(PdfUiUpdate(PdfStage.Processing, 0.3f, "生成讲义卡片中…"))
+        onUpdate(PdfUiUpdate(PdfStage.Processing, 0.3f, "生成讲义文档中…"))
 
-        // 1. 读取 PDF 文件的字节流
         val bytes = context.contentResolver.openInputStream(pdfUri)
             ?.use { it.readBytes() }
             ?: run {
@@ -118,51 +117,45 @@ object PdfBackendPipeline {
                 throw RuntimeException("无法读取PDF：$pdfUri")
             }
 
-        // 2. 构造 MultipartBody，对应 FastAPI 中的 file: UploadFile = File(...)
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart(
                 "file",
-                "upload.pdf", // 这里是后端 file.filename 获取到的默认名字
+                "upload.pdf",
                 bytes.toRequestBody("application/pdf".toMediaType())
             )
             .build()
 
-        // 3. 构建 Request，指向新的 generate_handout 接口
         val req = Request.Builder()
             .url("${BASE_URL}/generate_handout")
             .post(body)
             .build()
 
-        // 4. 发送网络请求并处理结果
         http.newCall(req).execute().use { resp ->
-            val respStr = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) {
+                val respStr = resp.body?.string().orEmpty()
                 onUpdate(PdfUiUpdate(PdfStage.Error, 0f, "讲义生成失败：HTTP ${resp.code}"))
                 throw RuntimeException("讲义生成失败：HTTP ${resp.code}\n$respStr")
             }
 
-            // 直接缓存并返回新的 JSON/Markdown 字符串
-            PdfCardCache.latestCardJson = respStr
+            // 因为后端返回 204 No Content，不需要读取 body
             onUpdate(PdfUiUpdate(PdfStage.Done, 1f, "讲义生成完成"))
-            return@withContext respStr
+
+            // 返回空字符串，表示执行成功但没有需要缓存的 json
+            return@withContext ""
         }
     }
 
     suspend fun generateDailyBriefing(
-        userId: Int,
-        targetDate: String
+        userId: Int
     ): String = withContext(Dispatchers.IO) {
-        // 构造 JSON 请求体，与 FastAPI 中的 DailyBriefingRequest 对应
-        val jsonReq = JSONObject().apply {
-            put("user_id", userId)
-            put("target_date", targetDate)
-        }
-
-        val body = jsonReq.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+        // 使用 FormBody 构建表单数据，仅传递 FastAPI 中 Form(...) 要求的 user_id
+        val body = okhttp3.FormBody.Builder()
+            .add("user_id", userId.toString())
+            .build()
 
         val req = Request.Builder()
-            .url("${BASE_URL}/generate_daily_briefing")
+            .url("${BASE_URL}/upload_pdf_generate_daily_brief")
             .post(body)
             .build()
 
@@ -200,11 +193,41 @@ object PdfBackendPipeline {
                 throw RuntimeException("更新简报失败：HTTP ${resp.code}\n$respStr")
             }
 
-            // 直接返回新的 JSON 字符串
             return@withContext respStr
         }
     }
 
+
+    suspend fun extractEliteIdeas(): Unit = withContext(Dispatchers.IO) {
+        // 不需要传参数，直接用空表单触发默认逻辑
+        val body = okhttp3.FormBody.Builder().build()
+        val req = Request.Builder()
+            .url("${BASE_URL}/extract_elite_ideas")
+            .post(body)
+            .build()
+
+        http.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                val respStr = resp.body?.string().orEmpty()
+                throw RuntimeException("Elite Ideas 生成失败：HTTP ${resp.code}\n$respStr")
+            }
+        }
+    }
+
+    suspend fun getEliteIdeas(): String = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("${BASE_URL}/get_elite_ideas")
+            .get()
+            .build()
+
+        http.newCall(req).execute().use { resp ->
+            val respStr = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) {
+                throw RuntimeException("拉取 Elite Ideas 失败：HTTP ${resp.code}\n$respStr")
+            }
+            return@withContext respStr
+        }
+    }
     private fun uploadCreateJob(context: Context, pdfUri: Uri): String {
         val bytes = context.contentResolver.openInputStream(pdfUri)
             ?.use { it.readBytes() }
@@ -281,5 +304,7 @@ object PdfBackendPipeline {
         }
     }
 }
+
+
 
 

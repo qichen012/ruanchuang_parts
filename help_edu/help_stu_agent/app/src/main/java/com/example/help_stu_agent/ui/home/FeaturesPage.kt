@@ -22,9 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,9 +51,9 @@ fun FeaturesPage(
     val features = listOf(
         FeatureItemData("Visual AI", "Photo analysis", Icons.Outlined.CameraAlt, Color(0xFFF1EAFF), onGoUploadPhoto),
         FeatureItemData("Daily Briefing", "Review your day", Icons.AutoMirrored.Outlined.ListAlt, Color(0xFFE8EFFF), onGoDailyReport),
+        FeatureItemData("Elite Ideas", "Top tier insights", Icons.Outlined.Lightbulb, Color(0xFFFFF4E5), onGoEliteIdeas),
         FeatureItemData("Sparky Link", "Connect ideas", Icons.Outlined.Link, Color(0xFFE6F7ED), onGoSparkyLink),
         FeatureItemData("Erudition Lab", "Deep dive research", Icons.Outlined.Science, Color(0xFFFFF0F5), onGoEruditionLab),
-        FeatureItemData("Elite Ideas", "Top tier insights", Icons.Outlined.Lightbulb, Color(0xFFFFF4E5), onGoEliteIdeas),
         FeatureItemData("Meet Memo", "Voice to text", Icons.Outlined.Mic, Color(0xFFE8F4FD), onGoMeetingMinutes)
     )
 

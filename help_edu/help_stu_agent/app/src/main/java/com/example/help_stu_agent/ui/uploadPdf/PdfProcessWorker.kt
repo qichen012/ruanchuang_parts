@@ -81,36 +81,53 @@ class PdfProcessWorker(
                 e.printStackTrace()
             }
 
-            // 1. 生成知识树 (Tree) - 进度占比 0.05 ~ 0.45
+            // 1. 生成知识树 (Tree)
             val treeJson = PdfBackendPipeline.runPipeline(
                 context = applicationContext,
                 pdfUri = uri,
                 onUpdate = { up -> push(up.stage.name, 0.05f + up.progress01 * 0.4f, "[树] ${up.statusText}") }
             )
 
-            // 2. 生成讲义卡片 (Card) - 进度占比 0.45 ~ 0.85
-            val cardJson = PdfBackendPipeline.runCardPipeline(
+            // 2. 生成讲义卡片 (Card)
+            PdfBackendPipeline.runCardPipeline(
                 context = applicationContext,
                 pdfUri = uri,
-                onUpdate = { up -> push(up.stage.name, 0.45f + up.progress01 * 0.4f, "[卡] ${up.statusText}") }
+                onUpdate = { up -> push(up.stage.name, 0.45f + up.progress01 * 0.2f, "[卡] ${up.statusText}") }
             )
 
-            // 3. 生成每日简报 (Daily Briefing)
-            push("Briefing", 0.85f, "正在生成今日专属简报...")
-            val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            // 3. 提取 Elite Ideas
+            push("Elite", 0.7f, "正在提取高价值核心思想...")
             try {
-                PdfBackendPipeline.generateDailyBriefing(
-                    userId = currentUserId,
-                    targetDate = todayDate
-                )
-                push("Briefing", 0.90f, "今日简报生成完成")
+                PdfBackendPipeline.extractEliteIdeas()
             } catch (e: Exception) {
-                // 独立捕获异常，确保简报失败不会导致整个流程崩溃
                 e.printStackTrace()
-                push("Briefing", 0.90f, "简报生成延迟，稍后可重试")
             }
 
-            // 4. 保存 Tree 和 Card 到本地数据库
+            // 4. 生成每日简报 (Daily Briefing)
+            push("Briefing", 0.75f, "正在生成今日专属简报...")
+            var briefJson = ""
+            try {
+                briefJson = PdfBackendPipeline.generateDailyBriefing(
+                    userId = currentUserId
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            // 5. 拉取全量 Elite Ideas 并存入本地数据库
+            push("EliteFetch", 0.90f, "同步核心思想库...")
+            try {
+                val eliteJson = PdfBackendPipeline.getEliteIdeas()
+                android.util.Log.d("EliteJsonDebug", "后端返回的原始数据：\n$eliteJson")
+                if (eliteJson.isNotBlank()) {
+                    val eliteRepo = com.example.help_stu_agent.data.repo.EliteIdeaRepository(applicationContext)
+                    eliteRepo.saveFromBackendJson(eliteJson)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            // 6. 保存 Tree 和 简报卡片 到本地数据库
             var treeId: String? = null
             var cardId: String? = null
 
@@ -122,11 +139,12 @@ class PdfProcessWorker(
                     jsonString = treeJson
                 )
             }
-            if (cardJson.isNotBlank()) {
+
+            if (briefJson.isNotBlank()) {
                 cardId = cardRepo.saveNewCard(
                     pdfDisplayName = displayName,
                     pdfUri = uriStr,
-                    rawJson = cardJson
+                    rawJson = briefJson
                 )
             }
 

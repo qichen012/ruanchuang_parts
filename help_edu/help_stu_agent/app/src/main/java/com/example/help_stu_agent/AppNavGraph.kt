@@ -17,17 +17,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import com.example.help_stu_agent.data.local.UserManager
-import com.example.help_stu_agent.ui.card.KnowledgeCardDetailPage
-import com.example.help_stu_agent.ui.elite.EliteIdeasPage
-import com.example.help_stu_agent.ui.erudition.EruditionLabPage
+import com.example.help_stu_agent.ui.knowledgeCard.KnowledgeCardDetailPage
+import com.example.help_stu_agent.ui.eliteIdeas.EliteIdeasPage
+import com.example.help_stu_agent.ui.eruditionLab.EruditionLabPage
+import com.example.help_stu_agent.ui.eliteIdeas.EliteIdeaDetailPage
 import com.example.help_stu_agent.ui.login.LoginPage
 import com.example.help_stu_agent.ui.register.RegisterPage
-import com.example.help_stu_agent.ui.meeting.MeetingMinutesPage
+import com.example.help_stu_agent.ui.meetingMem.MeetingMinutesPage
 import com.example.help_stu_agent.ui.openSource.OpenSourcePage
 import com.example.help_stu_agent.ui.past.PastContentPage
 import com.example.help_stu_agent.ui.userProfile.UserProfilePage
-import com.example.help_stu_agent.ui.report.DailyReportPage
-import com.example.help_stu_agent.ui.sparky.SparkyLinkPage
+import com.example.help_stu_agent.ui.dailyReport.DailyReportPage
+import com.example.help_stu_agent.ui.sparkyLink.SparkyLinkPage
 import com.example.help_stu_agent.ui.treeHistory.KnowledgeTreeHistoryPage
 import com.example.help_stu_agent.ui.treeStructure.KnowledgeTreePageFromCache
 import com.example.help_stu_agent.ui.treeStructure.KnowledgeTreePageFromId
@@ -230,7 +231,13 @@ fun AppNavGraph(
         }
         composable(AppRoutes.EliteIdeas) {
             EliteIdeasPage(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onOpenIdeaDetail = { ideaId ->
+                    navController.navigate(AppRoutes.eliteIdeaDetail(ideaId)) {
+                        launchSingleTop = true
+                    }
+                }
+
             )
         }
         composable(AppRoutes.EruditionLab) {
@@ -249,6 +256,16 @@ fun AppNavGraph(
             )
         }
 
+        composable(
+            route = AppRoutes.EliteIdeaDetail,
+            arguments = listOf(navArgument("ideaId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ideaId = backStackEntry.arguments?.getString("ideaId").orEmpty()
+            EliteIdeaDetailPage(
+                ideaId = ideaId,
+                onBack = { navController.popBackStack() }
+            )
+        }
 
     }
 }

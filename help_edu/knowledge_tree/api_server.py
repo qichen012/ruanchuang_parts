@@ -9,12 +9,11 @@ import uvicorn
 import os
 
 # 导入 ChromaDB 搜索模块
-from chroma_search import (
-    ChromaContextualSearch,
+from chorma_search import (
+    ContextualCompressionSearch,
     create_search_instance,
     add_to_chroma,
     search_chroma,
-    search_with_compression,
     DEFAULT_COLLECTION,
     DEFAULT_CHROMA_PATH
 )
@@ -52,10 +51,10 @@ app = FastAPI(
 )
 
 # 存储搜索实例
-_search_instances: Dict[str, ChromaContextualSearch] = {}
+_search_instances: Dict[str, ContextualCompressionSearch] = {}
 
 
-def get_search_instance(collection: str = DEFAULT_COLLECTION) -> ChromaContextualSearch:
+def get_search_instance(collection: str = DEFAULT_COLLECTION) -> ContextualCompressionSearch:
     """获取或创建搜索实例"""
     if collection not in _search_instances:
         _search_instances[collection] = create_search_instance(collection)
@@ -237,7 +236,7 @@ def compression_search(request: CompressionSearchRequest):
     """带上下文压缩的搜索"""
     try:
         search = get_search_instance(request.collection)
-        result = search.search_with_compression(
+        result = search.search_with_context(
             query=request.query,
             n_results=request.n_results,
             n_after_compression=request.n_after_compression,

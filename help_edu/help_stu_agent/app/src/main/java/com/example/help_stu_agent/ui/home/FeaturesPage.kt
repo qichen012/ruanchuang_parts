@@ -46,8 +46,10 @@ fun FeaturesPage(
     onGoSparkyLink: () -> Unit,
     onGoEliteIdeas: () -> Unit,
     onGoEruditionLab: () -> Unit,
-    onGoMeetingMinutes: () -> Unit
+    onGoMeetingMinutes: () -> Unit,
+    onGoMeetingHistory: () -> Unit
 ) {
+
     val features = listOf(
         FeatureItemData("Visual AI", "Photo analysis", Icons.Outlined.CameraAlt, Color(0xFFF1EAFF), onGoUploadPhoto),
         FeatureItemData("Daily Briefing", "Review your day", Icons.AutoMirrored.Outlined.ListAlt, Color(0xFFE8EFFF), onGoDailyReport),
@@ -63,7 +65,6 @@ fun FeaturesPage(
             .background(Color(0xFFF6F9FE))
             .statusBarsPadding()
     ) {
-        // 将所有元素放入同一个 LazyVerticalGrid 中，保证同图层完美流畅滑动
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 110.dp),
@@ -90,7 +91,7 @@ fun FeaturesPage(
                 }
             }
 
-            // --- 2. 结合 PDF 与 Photo 的深色 Upload 卡片 ---
+
             item(span = { GridItemSpan(maxLineSpan) }) {
                 AiUploadCenterCard(
                     onPdfClick = onGoUploadPdf,
@@ -98,17 +99,14 @@ fun FeaturesPage(
                 )
             }
 
-            // --- 3. 知识树卡片 ---
             item(span = { GridItemSpan(maxLineSpan) }) {
                 KnowledgeTreeBannerCard(onClick = onGoKnowledgeStructure)
             }
 
-            // --- 4. 开源社区卡片 ---
             item(span = { GridItemSpan(maxLineSpan) }) {
                 OpenSourceCard(onClick = onGoOpenSource)
             }
 
-            // --- 5. 其他网格功能块 ---
             items(features) { feature ->
                 FeatureCard(feature)
             }
@@ -124,7 +122,7 @@ fun AiUploadCenterCard(onPdfClick: () -> Unit, onPhotoClick: () -> Unit) {
             .shadow(16.dp, RoundedCornerShape(32.dp), spotColor = Color(0xFF101613).copy(alpha = 0.4f))
             .clip(RoundedCornerShape(32.dp))
             .background(Brush.linearGradient(colors = listOf(Color(0xFF242A27), Color(0xFF121614))))
-            .clickable { onPdfClick() } // 默认点击整个卡片进入 PDF
+            .clickable { onPdfClick() } 
             .padding(24.dp)
     ) {
         Row(
@@ -133,7 +131,6 @@ fun AiUploadCenterCard(onPdfClick: () -> Unit, onPhotoClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                // 顶部标签
                 Row(
                     modifier = Modifier
                         .background(Color(0xFF2E3834), RoundedCornerShape(12.dp))
@@ -165,7 +162,6 @@ fun AiUploadCenterCard(onPdfClick: () -> Unit, onPhotoClick: () -> Unit) {
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // 右侧组合图标
             Box(
                 modifier = Modifier
                     .size(68.dp)
@@ -198,7 +194,6 @@ fun AiUploadCenterCard(onPdfClick: () -> Unit, onPhotoClick: () -> Unit) {
 
 @Composable
 fun KnowledgeTreeBannerCard(onClick: () -> Unit) {
-    // 外层采用 Surface，启用 onClick 带来卡片级别的波纹点击效果
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -210,7 +205,6 @@ fun KnowledgeTreeBannerCard(onClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 左侧图标
             Box(
                 modifier = Modifier
                     .size(64.dp)
@@ -227,7 +221,6 @@ fun KnowledgeTreeBannerCard(onClick: () -> Unit) {
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // 文本信息
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "Knowledge Tree",
@@ -246,7 +239,6 @@ fun KnowledgeTreeBannerCard(onClick: () -> Unit) {
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 右侧按钮同样改为 Surface，拥有独立的圆形波纹效果
             Surface(
                 onClick = onClick,
                 modifier = Modifier.size(48.dp),
@@ -268,7 +260,6 @@ fun KnowledgeTreeBannerCard(onClick: () -> Unit) {
 
 @Composable
 fun OpenSourceCard(onClick: () -> Unit) {
-    // 外层采用 Surface 启用卡片级别的点击反馈
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -280,7 +271,6 @@ fun OpenSourceCard(onClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 引入原生的 GitHub Logo 图标
             Box(
                 modifier = Modifier.size(64.dp).background(Color(0xFF1E1E1E), RoundedCornerShape(20.dp)),
                 contentAlignment = Alignment.Center
@@ -300,7 +290,6 @@ fun OpenSourceCard(onClick: () -> Unit) {
             }
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 右侧按钮
             Surface(
                 onClick = onClick,
                 modifier = Modifier.size(48.dp),

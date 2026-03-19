@@ -18,6 +18,10 @@ object AppRoutes {
     const val EliteIdeas = "elite_ideas"
     const val EruditionLab = "erudition_lab"
     const val MeetingMinutes = "meeting_minutes"
+    const val MeetingHistory = "meeting_history"
+    const val MeetingDetail = "meeting_detail/{meetingId}"
+    fun meetingDetail(meetingId: String): String = "meeting_detail/${Uri.encode(meetingId)}"
+
     const val Login = "login"
     const val Register = "register"
     const val UserProfile = "user_profile"

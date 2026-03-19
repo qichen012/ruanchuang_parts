@@ -8,6 +8,7 @@ import java.io.File
 
 data class MeetingRecorderState(
     val isRecording: Boolean = false,
+    val isPaused: Boolean = false,
     val seconds: Long = 0,
     val lastFilePath: String? = null,
     val level01: Float = 0f,
@@ -28,6 +29,20 @@ object MeetingRecorder {
             action = MeetingRecorderService.ACTION_START
         }
         context.startForegroundService(i)
+    }
+
+    fun pause(context: Context) {
+        val i = Intent(context, MeetingRecorderService::class.java).apply {
+            action = MeetingRecorderService.ACTION_PAUSE
+        }
+        context.startService(i)
+    }
+
+    fun resume(context: Context) {
+        val i = Intent(context, MeetingRecorderService::class.java).apply {
+            action = MeetingRecorderService.ACTION_RESUME
+        }
+        context.startService(i)
     }
 
     fun stop(context: Context) {

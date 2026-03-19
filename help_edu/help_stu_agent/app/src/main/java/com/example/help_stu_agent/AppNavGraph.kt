@@ -24,6 +24,8 @@ import com.example.help_stu_agent.ui.eliteIdeas.EliteIdeaDetailPage
 import com.example.help_stu_agent.ui.login.LoginPage
 import com.example.help_stu_agent.ui.register.RegisterPage
 import com.example.help_stu_agent.ui.meetingMem.MeetingMinutesPage
+import com.example.help_stu_agent.ui.meetingMem.MeetingHistoryPage
+import com.example.help_stu_agent.ui.meetingMem.MeetingDetailPage
 import com.example.help_stu_agent.ui.openSource.OpenSourcePage
 import com.example.help_stu_agent.ui.past.PastContentPage
 import com.example.help_stu_agent.ui.userProfile.UserProfilePage
@@ -114,6 +116,7 @@ fun AppNavGraph(
                 onGoEliteIdeas = { navController.navigate(AppRoutes.EliteIdeas) { launchSingleTop = true } },
                 onGoEruditionLab = { navController.navigate(AppRoutes.EruditionLab) { launchSingleTop = true } },
                 onGoMeetingMinutes = { navController.navigate(AppRoutes.MeetingMinutes) { launchSingleTop = true } },
+                onGoMeetingHistory = { navController.navigate(AppRoutes.MeetingHistory) { launchSingleTop = true } },
                 onGoMyAccount = { navController.navigate(AppRoutes.UserProfile) { launchSingleTop = true } },
                 onLogout = { navController.navigate(AppRoutes.Login) { popUpTo(AppRoutes.Main) { inclusive = true } } },
                 onGoPastContent = { navController.navigate(AppRoutes.PastContent) { launchSingleTop = true } } ,
@@ -141,11 +144,6 @@ fun AppNavGraph(
             )
         }
 
-        composable(AppRoutes.PastContent) {
-            PastContentPage(
-                onBack = { navController.popBackStack() }
-            )
-        }
         composable(AppRoutes.UserProfile) {
             UserProfilePage(
                 onBack = { navController.popBackStack() },
@@ -247,6 +245,23 @@ fun AppNavGraph(
         }
         composable(AppRoutes.MeetingMinutes) {
             MeetingMinutesPage(
+                onBack = { navController.popBackStack() },
+                onGoHistory = { navController.navigate(AppRoutes.MeetingHistory) }
+            )
+        }
+        composable(AppRoutes.MeetingHistory) {
+            MeetingHistoryPage(
+                onBack = { navController.popBackStack() },
+                onOpenDetail = { id -> navController.navigate(AppRoutes.meetingDetail(id)) }
+            )
+        }
+        composable(
+            route = AppRoutes.MeetingDetail,
+            arguments = listOf(navArgument("meetingId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val meetingId = backStackEntry.arguments?.getString("meetingId").orEmpty()
+            MeetingDetailPage(
+                meetingId = meetingId,
                 onBack = { navController.popBackStack() }
             )
         }

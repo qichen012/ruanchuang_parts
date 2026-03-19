@@ -22,6 +22,8 @@ class MeetingRecorderService : Service() {
 
     companion object {
         const val ACTION_START = "meeting_rec_start"
+        const val ACTION_PAUSE = "meeting_rec_pause"
+        const val ACTION_RESUME = "meeting_rec_resume"
         const val ACTION_STOP = "meeting_rec_stop"
 
         private const val CHANNEL_ID = "meeting_rec_channel"
@@ -32,8 +34,8 @@ class MeetingRecorderService : Service() {
     private var filePath: String? = null
     private var seconds: Long = 0L
     private var level01: Float = 0f
+    private var isPaused: Boolean = false
 
-    // ✅ NEW: 记录最近一次转写任务（用于 UI 检查）
     private var lastWorkId: String? = null
     private var lastTraceId: String? = null
 
@@ -43,12 +45,14 @@ class MeetingRecorderService : Service() {
     override fun onCreate() {
         super.onCreate()
         ensureChannel()
-        pushState(isRecording = false, error = null)
+        pushState(isRecording = false, isPaused = false, error = null)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> startRecording()
+            ACTION_PAUSE -> pauseRecording()
+            ACTION_RESUME -> resumeRecording()
             ACTION_STOP -> stopRecording()
         }
         return START_STICKY
@@ -70,6 +74,7 @@ class MeetingRecorderService : Service() {
         filePath = out.absolutePath
         seconds = 0L
         level01 = 0f
+        isPaused = false
 
         val r = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(this) else MediaRecorder()
         recorder = r
@@ -86,30 +91,59 @@ class MeetingRecorderService : Service() {
 
             startForeground(NOTIF_ID, buildNotification("Recording… 00:00"))
             startTicker()
-            pushState(isRecording = true, error = null)
+            pushState(isRecording = true, isPaused = false, error = null)
         }.onFailure { e ->
             runCatching { r.release() }
             recorder = null
-            pushState(isRecording = false, error = e.message ?: "Start recording failed")
+            pushState(isRecording = false, isPaused = false, error = e.message ?: "Start recording failed")
             stopSelf()
         }
     }
 
-    /**
-     * ✅ 停止录音后：立即把音频 enqueue 到 WorkManager（后台上传+转写）
-     * 这样即便页面退出，也能“静默处理”并发送到后端。
-     */
+    private fun pauseRecording() {
+        if (recorder == null || isPaused) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            runCatching {
+                recorder?.pause()
+                isPaused = true
+                // We keep the ticker running to update the UI with 0 volume, 
+                // but we handle the timer increment inside startTicker.
+                pushState(isRecording = true, isPaused = true, error = null)
+                val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                nm.notify(NOTIF_ID, buildNotification("Paused ${fmt(seconds)}"))
+            }.onFailure { e ->
+                Log.e("MeetMemo", "Pause failed", e)
+            }
+        }
+    }
+
+    private fun resumeRecording() {
+        if (recorder == null || !isPaused) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            runCatching {
+                recorder?.resume()
+                isPaused = false
+                pushState(isRecording = true, isPaused = false, error = null)
+            }.onFailure { e ->
+                Log.e("MeetMemo", "Resume failed", e)
+            }
+        }
+    }
+
     private fun stopRecording() {
         val r = recorder ?: run { stopSelf(); return }
 
         stopTicker()
 
-        runCatching { r.stop() }.onFailure {
+        runCatching {
+            r.stop()
+        }.onFailure {
             Log.w("MeetMemo", "recorder.stop failed: ${it.message}")
         }
         runCatching { r.release() }
         recorder = null
         level01 = 0f
+        isPaused = false
 
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIF_ID, buildNotification("Saved: ${File(filePath ?: "").name}"))
@@ -117,11 +151,9 @@ class MeetingRecorderService : Service() {
         val path = filePath
         if (!path.isNullOrBlank()) {
             enqueueTranscribe(path)
-        } else {
-            Log.w("MeetMemo", "stopRecording: filePath is blank, skip enqueue")
         }
 
-        pushState(isRecording = false, error = null)
+        pushState(isRecording = false, isPaused = false, error = null)
         stopSelf()
     }
 
@@ -134,20 +166,15 @@ class MeetingRecorderService : Service() {
                     MeetingTranscribeWorker.KEY_TRACE_ID to traceId
                 )
             )
-            // ✅ 固定 tag：便于检索所有会议转写任务
             .addTag(MeetingTranscribeWorker.TAG_MEETING_TRANSCRIBE)
-            // ✅ 单次 trace tag：便于定位这一条
             .addTag("trace_$traceId")
             .build()
 
         lastWorkId = req.id.toString()
         lastTraceId = traceId
 
-        Log.d("MeetMemo", "Enqueue transcribe workId=${req.id} traceId=$traceId path=$path")
         WorkManager.getInstance(this).enqueue(req)
-
-        // 立即推一次 state，让 UI 立刻拿到 lastWorkId/lastTraceId
-        pushState(isRecording = false, error = null)
+        pushState(isRecording = false, isPaused = false, error = null)
     }
 
     private fun startTicker() {
@@ -155,20 +182,24 @@ class MeetingRecorderService : Service() {
         tickerJob = scope.launch {
             var msAcc = 0L
             while (isActive) {
-                delay(100) // 10Hz 音量采样
-                msAcc += 100
+                delay(100)
+                
+                if (!isPaused) {
+                    msAcc += 100
+                    val amp = runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0)
+                    level01 = ampToLevel01(amp)
 
-                val amp = runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0)
-                level01 = ampToLevel01(amp)
-
-                if (msAcc >= 1000) {
-                    msAcc -= 1000
-                    seconds += 1
-                    val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-                    nm.notify(NOTIF_ID, buildNotification("Recording… ${fmt(seconds)}"))
+                    if (msAcc >= 1000) {
+                        msAcc -= 1000
+                        seconds += 1
+                        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                        nm.notify(NOTIF_ID, buildNotification("Recording… ${fmt(seconds)}"))
+                    }
+                } else {
+                    level01 = 0f
                 }
 
-                pushState(isRecording = true, error = null)
+                pushState(isRecording = true, isPaused = isPaused, error = null)
             }
         }
     }
@@ -178,10 +209,11 @@ class MeetingRecorderService : Service() {
         tickerJob = null
     }
 
-    private fun pushState(isRecording: Boolean, error: String?) {
+    private fun pushState(isRecording: Boolean, isPaused: Boolean, error: String?) {
         MeetingRecorder.update(
             MeetingRecorderState(
                 isRecording = isRecording,
+                isPaused = isPaused,
                 seconds = seconds,
                 lastFilePath = filePath,
                 level01 = level01,

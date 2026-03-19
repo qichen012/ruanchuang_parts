@@ -47,6 +47,7 @@ fun MainHomePage(
     onGoEliteIdeas: () -> Unit,
     onGoEruditionLab: () -> Unit,
     onGoMeetingMinutes: () -> Unit,
+    onGoMeetingHistory: () -> Unit,
     onGoMyAccount: () -> Unit,
     onLogout: () -> Unit,
     onGoPastContent: () -> Unit,
@@ -115,7 +116,8 @@ fun MainHomePage(
                             onGoSparkyLink = onGoSparkyLink,
                             onGoEliteIdeas = onGoEliteIdeas,
                             onGoEruditionLab = onGoEruditionLab,
-                            onGoMeetingMinutes = onGoMeetingMinutes
+                            onGoMeetingMinutes = onGoMeetingMinutes,
+                            onGoMeetingHistory = onGoMeetingHistory
                         )
                     }
                     BottomNavItem.User -> {

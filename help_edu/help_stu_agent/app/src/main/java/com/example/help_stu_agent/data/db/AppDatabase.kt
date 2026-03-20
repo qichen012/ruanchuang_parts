@@ -5,26 +5,26 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-
 @Database(
     entities = [
         KnowledgeCardEntity::class,
         KnowledgeTreeEntity::class,
         EliteIdeaEntity::class,
-        MeetingMinutesEntity::class
+        MeetingMinutesEntity::class,
+        PhotoLogEntity::class,
+        SparkyLinkLogEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun knowledgeCardDao(): KnowledgeCardDao
-
     abstract fun knowledgeTreeDao(): KnowledgeTreeDao
-
     abstract fun eliteIdeaDao(): EliteIdeaDao
-
     abstract fun meetingMinutesDao(): MeetingMinutesDao
+    abstract fun photoLogDao(): PhotoLogDao
+    abstract fun sparkyLinkLogDao(): SparkyLinkLogDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -36,7 +36,6 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "help_stu_agent.db"
                 )
-                    // 开发阶段强烈建议：先用它避免迁移麻烦
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = inst

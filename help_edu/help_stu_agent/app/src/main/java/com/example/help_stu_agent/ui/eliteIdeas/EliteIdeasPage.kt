@@ -1,7 +1,6 @@
 package com.example.help_stu_agent.ui.eliteIdeas
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,13 +25,12 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.help_stu_agent.R
+import coil.compose.AsyncImage
 import com.example.help_stu_agent.data.repo.EliteIdeaRepository
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -41,17 +39,6 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.ceil
-
-private val LocalCaseImages = listOf(
-    R.drawable.elite_ideas_photo_0,
-    R.drawable.elite_ideas_photo_1,
-    R.drawable.elite_ideas_photo_2,
-    R.drawable.elite_ideas_photo_3,
-    R.drawable.elite_ideas_photo_4,
-    R.drawable.elite_ideas_photo_5,
-    R.drawable.elite_ideas_photo_6,
-    R.drawable.elite_ideas_photo_7
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,7 +67,8 @@ fun EliteIdeasPage(
                             RealizationInstance(
                                 title = obj.optString("title", obj.optString("name", "实例 ${i + 1}")),
                                 description = obj.optString("description", obj.optString("content", "")),
-                                imageRes = LocalCaseImages.random() // 👉 2. 在解析时就分配好随机图片，防止滑动时闪烁
+                                imageUrl = obj.optString("image_url", ""),
+                                imageDataUrl = obj.optString("image_data_url", "")
                             )
                         )
                     }
@@ -185,20 +173,34 @@ fun EliteIdeasPage(
 
 @Composable
 private fun InstanceCard(instance: RealizationInstance, onClick: () -> Unit) {
+    val imageModel = instance.imageDataUrl?.takeIf { it.isNotBlank() }
+        ?: instance.imageUrl?.takeIf { it.isNotBlank() }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp) // 卡片高度，接近你截图中的比例
+            .height(160.dp)
             .padding(horizontal = 24.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(24.dp))
             .clickable { onClick() }
     ) {
-        Image(
-            painter = painterResource(id = instance.imageRes),
-            contentDescription = instance.title,
-            contentScale = ContentScale.Crop, // 裁剪填充整个 Box
-            modifier = Modifier.fillMaxSize()
-        )
+        if (!imageModel.isNullOrBlank()) {
+            AsyncImage(
+                model = imageModel,
+                contentDescription = instance.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFEAEAEA)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No Image", color = Color.Gray)
+            }
+        }
 
         Box(
             modifier = Modifier
@@ -208,14 +210,13 @@ private fun InstanceCard(instance: RealizationInstance, onClick: () -> Unit) {
                         colors = listOf(
                             Color.Transparent,
                             Color.Black.copy(alpha = 0.2f),
-                            Color.Black.copy(alpha = 0.8f) // 底部加深
+                            Color.Black.copy(alpha = 0.8f)
                         ),
                         startY = 0f,
                         endY = Float.POSITIVE_INFINITY
                     )
                 )
         )
-
 
         Column(
             modifier = Modifier
@@ -244,7 +245,6 @@ private fun InstanceCard(instance: RealizationInstance, onClick: () -> Unit) {
         }
     }
 }
-
 @Composable
 private fun CalendarStrip( month: YearMonth, selectedDate: LocalDate, onPrevMonth: () -> Unit, onNextMonth: () -> Unit, onSelect: (LocalDate) -> Unit) {
     val titleFmt = remember { DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH) }
@@ -287,10 +287,10 @@ private fun CalendarStrip( month: YearMonth, selectedDate: LocalDate, onPrevMont
     }
 }
 
-// 👉 4. 更新数据模型，增加 imageRes
 data class RealizationInstance(
     val title: String,
     val description: String,
-    val imageRes: Int // 新增图片资源 ID
+    val imageUrl: String? = null,
+    val imageDataUrl: String? = null
 )
 data class IdeaPageData(val category: String, val title: String, val description: String, val instances: List<RealizationInstance>)

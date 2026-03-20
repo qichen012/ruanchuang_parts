@@ -221,10 +221,7 @@ fun AppNavGraph(
         }
         composable(AppRoutes.SparkyLink) {
             SparkyLinkPage(
-                onBack = { navController.popBackStack() },
-                onOpenReport = { cardId ->
-                    navController.navigate(AppRoutes.knowledgeCardDetail(cardId)) { launchSingleTop = true }
-                }
+                onBack = { navController.popBackStack() }
             )
         }
         composable(AppRoutes.EliteIdeas) {
@@ -262,7 +259,12 @@ fun AppNavGraph(
             val meetingId = backStackEntry.arguments?.getString("meetingId").orEmpty()
             MeetingDetailPage(
                 meetingId = meetingId,
-                onBack = { navController.popBackStack() }
+                onBack = { 
+                    // 尝试返回到会议记录主页，如果不在栈中则执行普通返回
+                    if (!navController.popBackStack(AppRoutes.MeetingMinutes, false)) {
+                        navController.popBackStack()
+                    }
+                }
             )
         }
         composable(AppRoutes.OpenSource) {

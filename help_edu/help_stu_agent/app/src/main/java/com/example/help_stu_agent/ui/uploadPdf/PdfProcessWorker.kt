@@ -119,12 +119,16 @@ class PdfProcessWorker(
             try {
                 val eliteJson = PdfBackendPipeline.getEliteIdeas()
                 android.util.Log.d("EliteJsonDebug", "后端返回的原始数据：\n$eliteJson")
-                if (eliteJson.isNotBlank()) {
+
+                if (eliteJson.isBlank()) {
+                    android.util.Log.w("EliteJsonDebug", "Elite Ideas 接口返回空字符串")
+                } else {
                     val eliteRepo = com.example.help_stu_agent.data.repo.EliteIdeaRepository(applicationContext)
                     eliteRepo.saveFromBackendJson(eliteJson)
+                    android.util.Log.d("EliteJsonDebug", "Elite Ideas 已成功写入本地数据库")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("EliteJsonDebug", "同步 Elite Ideas 失败", e)
             }
 
             // 6. 保存 Tree 和 简报卡片 到本地数据库
@@ -148,7 +152,7 @@ class PdfProcessWorker(
                 )
             }
 
-            // 5. 更新后端源文档状态
+            // 7. 更新后端源文档状态
             backendDocId?.let { id ->
                 runCatching {
                     PdfRetrofitClient.api.updateSourceDocumentStatus(

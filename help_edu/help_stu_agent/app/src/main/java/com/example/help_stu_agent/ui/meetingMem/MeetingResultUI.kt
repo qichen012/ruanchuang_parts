@@ -162,7 +162,7 @@ fun MeetingMinutesResult(
 
             if (minutes.summary.isBlank() && minutes.rawText.isBlank()) {
                 Text(
-                    "✨ 正在处理中...",
+                    "✨ Processing...",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF94A3B8)
                 )

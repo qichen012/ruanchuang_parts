@@ -91,7 +91,6 @@ fun PdfUploadPage(
                 }
                 Text("PDF Intelligence", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
 
-                // 👇 新增：右上角的双箭头切换按钮
                 IconButton(onClick = onSwitchToPhoto, modifier = Modifier.align(Alignment.CenterEnd)) {
                     Icon(Icons.Outlined.SwapHoriz, contentDescription = "Switch to Photo", tint = Color(0xFF1E293B))
                 }
@@ -130,7 +129,10 @@ fun PdfUploadPage(
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("RECENT INSIGHTS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8), letterSpacing = 1.sp)
-                    Text("View All", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF5D5FEF), modifier = Modifier.clickable { })
+                    Text("Clear All", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF5D5FEF), modifier = Modifier.clickable {
+                        wm.pruneWork()
+                        wm.cancelAllWorkByTag(PdfWorkQueue.TAG)
+                    })
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -147,7 +149,6 @@ fun PdfUploadPage(
     }
 }
 
-// ... 这里的 UploadInteractiveArea, ImmersiveProgressOverlay, InsightQueueCard 保持之前的代码不变 ...
 @Composable
 fun UploadInteractiveArea(hasSelection: Boolean, selectedCount: Int, onClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "upload_anim")

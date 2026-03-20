@@ -1,12 +1,9 @@
 package com.example.help_stu_agent.ui.past
 
 import android.util.Log
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -17,8 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -53,10 +48,7 @@ suspend fun fetchRecommendation(userId: Int): RecommendBrief? = withContext(Disp
     try {
         val response = client.newCall(request).execute()
         val jsonStr = response.body?.string() ?: return@withContext null
-
-        // 在 Logcat 中输出拿到的原始 JSON
         Log.d("RecommendAPI", "成功拿到 JSON (UserID: $userId): $jsonStr")
-
         val jsonParser = Json { ignoreUnknownKeys = true }
         jsonParser.decodeFromString<RecommendBrief>(jsonStr)
     } catch (e: Exception) {
@@ -72,7 +64,7 @@ fun PastContentPage(
 ) {
     val scrollState = rememberScrollState()
 
-    // 解决下拉返回白屏的锁
+    // 解决下拉返回白屏的逻辑加固
     var overscrollY by remember { mutableFloatStateOf(0f) }
     var hasTriggeredBack by remember { mutableStateOf(false) }
 
@@ -81,19 +73,14 @@ fun PastContentPage(
     var isLoading by remember { mutableStateOf(true) }
     var isError by remember { mutableStateOf(false) }
 
-    // === 1. 获取 Context 并初始化 UserManager ===
     val context = LocalContext.current
     val userManager = remember { UserManager(context) }
-
-    // === 2. 收集 userId ===
     val currentUserId by userManager.userIdFlow.collectAsState(initial = null)
 
-    // === 3. 当 userId 准备好时，发起网络请求 ===
     LaunchedEffect(currentUserId) {
         currentUserId?.let { userId ->
             isLoading = true
             isError = false
-
             val data = fetchRecommendation(userId)
             if (data != null) {
                 briefData = data
@@ -104,29 +91,49 @@ fun PastContentPage(
         }
     }
 
-    // 下拉返回的嵌套滚动拦截器
+    // 优化后的嵌套滚动拦截器
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // 只有当已经在顶部 (scrollState.value == 0) 且正在下拉 (available.y > 0) 时才拦截
                 if (scrollState.value == 0 && available.y > 0) {
                     if (!hasTriggeredBack) {
                         overscrollY += available.y
-                        if (overscrollY > 150f) {
+                        // 稍微调高阈值，增加稳定性
+                        if (overscrollY > 180f) {
                             hasTriggeredBack = true
+                            // 立即清空偏移，防止连续触发
+                            overscrollY = 0f
                             onBack()
                         }
                     }
-                    return available
-                } else if (available.y < 0) {
+                    // 拦截消费掉这个滚动
+                    return Offset(0f, available.y)
+                }
+                
+                // 如果是上划，重置偏移量
+                if (available.y < 0) {
                     overscrollY = 0f
                 }
                 return Offset.Zero
             }
 
-            override suspend fun onPreFling(available: Velocity): Velocity {
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                // 手指离开后重置状态
                 overscrollY = 0f
-                hasTriggeredBack = false
-                return super.onPreFling(available)
+                return super.onPostFling(consumed, available)
+            }
+            
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                // 确保在任何非顶部状态下清除下拉累积
+                if (scrollState.value > 0) {
+                    overscrollY = 0f
+                }
+                return super.onPostScroll(consumed, available, source)
             }
         }
     }
@@ -144,7 +151,7 @@ fun PastContentPage(
                 .fillMaxSize()
                 .verticalScroll(scrollState)
         ) {
-            // 顶部横条
+            // 顶部装饰横条
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -158,39 +165,30 @@ fun PastContentPage(
                 )
             }
 
-            // 头部信息栏 (日期、波浪)
+            // 头部
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.Bottom
             ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Text(
-                        text = "2.1",
-                        fontSize = 44.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontFamily = FontFamily.Serif,
-                        fontStyle = FontStyle.Italic,
-                        color = Color(0xFF1E293B)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "NO.2",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFFC107),
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                }
-
-                // 占位 Box 以保持中间文字居中对称（代替原来的心形图标位置）
-                Spacer(modifier = Modifier.size(48.dp))
+                Text(
+                    text = "2.1",
+                    fontSize = 44.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = FontFamily.Serif,
+                    fontStyle = FontStyle.Italic,
+                    color = Color(0xFF1E293B)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "NO.2",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFFFC107),
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -198,65 +196,32 @@ fun PastContentPage(
             Column(
                 modifier = Modifier
                     .padding(horizontal = 28.dp)
-                    .padding(bottom = 60.dp) // 底部留白
+                    .padding(bottom = 60.dp)
             ) {
                 when {
                     isLoading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(300.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = Color(0xFF1E293B))
                         }
                     }
                     isError -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(300.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "加载失败，请检查网络或后端服务。",
-                                color = Color.Red,
-                                fontSize = 16.sp
-                            )
+                        Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
+                            Text(text = "加载失败，请重试。", color = Color.Red, fontSize = 16.sp)
                         }
                     }
                     briefData != null -> {
                         val data = briefData!!
-
-                        // 1. 核心洞察
                         if (data.posterior_insight.isNotBlank()) {
-                            ContentSection(
-                                title = "核心洞察",
-                                content = data.posterior_insight,
-                                iconNumber = "1"
-                            )
+                            ContentSection(title = "核心洞察", content = data.posterior_insight, iconNumber = "1")
                             Spacer(modifier = Modifier.height(40.dp))
                         }
-
-                        // 2. 关键概念
                         if (data.key_concepts.isNotBlank()) {
-                            ContentSection(
-                                title = "关键概念",
-                                content = data.key_concepts,
-                                iconNumber = "2"
-                            )
+                            ContentSection(title = "关键概念", content = data.key_concepts, iconNumber = "2")
                             Spacer(modifier = Modifier.height(40.dp))
                         }
-
-                        // 3. 启发问题
                         if (data.prompt_questions.isNotEmpty()) {
-                            val questionsStr = data.prompt_questions.joinToString(separator = "\n") { "• $it" }
-
-                            ContentSection(
-                                title = "启发问题",
-                                content = questionsStr,
-                                iconNumber = "3"
-                            )
+                            val questionsStr = data.prompt_questions.joinToString("\n") { "• $it" }
+                            ContentSection(title = "启发问题", content = questionsStr, iconNumber = "3")
                         }
                     }
                 }
@@ -268,50 +233,19 @@ fun PastContentPage(
 @Composable
 fun ContentSection(title: String, content: String, iconNumber: String) {
     Row {
-        // 左侧的 # 号和数字方块
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                "#",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E293B),
-                modifier = Modifier.padding(top = 4.dp)
-            )
+            Text("#", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B), modifier = Modifier.padding(top = 4.dp))
             Spacer(modifier = Modifier.height(8.dp))
-            Surface(
-                color = Color(0xFF007AFF),
-                shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.size(24.dp)
-            ) {
+            Surface(color = Color(0xFF007AFF), shape = RoundedCornerShape(4.dp), modifier = Modifier.size(24.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = iconNumber,
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = iconNumber, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
-
         Spacer(modifier = Modifier.width(12.dp))
-
-        // 右侧的标题和正文
         Column {
-            Text(
-                text = title,
-                fontSize = 14.sp,
-                color = Color(0xFF64748B),
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-            )
-            Text(
-                text = content,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 28.sp,
-                color = Color(0xFF1E293B)
-            )
+            Text(text = title, fontSize = 14.sp, color = Color(0xFF64748B), fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+            Text(text = content, fontSize = 18.sp, fontWeight = FontWeight.Bold, lineHeight = 28.sp, color = Color(0xFF1E293B))
         }
     }
 }

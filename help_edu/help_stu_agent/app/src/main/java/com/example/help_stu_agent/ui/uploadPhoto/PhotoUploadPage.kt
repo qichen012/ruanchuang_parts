@@ -42,6 +42,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.help_stu_agent.data.db.AppDatabase
+import com.example.help_stu_agent.data.db.PhotoLogEntity
+import com.example.help_stu_agent.data.local.UserManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -69,6 +72,9 @@ fun UploadPhotoPage(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val userManager = remember { UserManager(context) }
+    val currentUserId by userManager.userIdFlow.collectAsState(initial = 0)
+    val photoLogDao = remember { AppDatabase.getInstance(context).photoLogDao() }
 
     var selectedFiles by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var showImmersiveProgress by remember { mutableStateOf(false) }
@@ -148,7 +154,17 @@ fun UploadPhotoPage(
                                     // 更新结果状态
                                     taskHistory = taskHistory.map {
                                         if (it.id == task.id) {
-                                            if (result != null) it.copy(state = TaskState.SUCCEEDED, resultJson = result)
+                                            if (result != null) {
+                                                // 保存日志到数据库
+                                                photoLogDao.insert(
+                                                    PhotoLogEntity(
+                                                        userId = currentUserId ?: 0,
+                                                        fileName = task.name,
+                                                        localUri = task.uri
+                                                    )
+                                                )
+                                                it.copy(state = TaskState.SUCCEEDED, resultJson = result)
+                                            }
                                             else it.copy(state = TaskState.FAILED)
                                         } else it
                                     }
@@ -167,7 +183,9 @@ fun UploadPhotoPage(
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("RECENT INSIGHTS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8), letterSpacing = 1.sp)
-                    Text("View All", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF5D5FEF), modifier = Modifier.clickable { })
+                    Text("Clear All", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF5D5FEF), modifier = Modifier.clickable {
+                        taskHistory = emptyList()
+                    })
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

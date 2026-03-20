@@ -18,6 +18,12 @@ interface KnowledgeCardDao {
     @Query("SELECT * FROM knowledge_cards ORDER BY createdAt DESC")
     suspend fun getAll(): List<KnowledgeCardEntity>
 
+    @Query("SELECT DISTINCT strftime('%Y-%m-%d', createdAt / 1000, 'unixepoch') FROM knowledge_cards ORDER BY createdAt DESC")
+    fun getReportDates(): Flow<List<String>>
+
+    @Query("SELECT * FROM knowledge_cards WHERE strftime('%Y-%m-%d', createdAt / 1000, 'unixepoch') = :date")
+    suspend fun getCardsByDate(date: String): List<KnowledgeCardEntity>
+
     @Query("SELECT * FROM knowledge_cards WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): KnowledgeCardEntity?
 

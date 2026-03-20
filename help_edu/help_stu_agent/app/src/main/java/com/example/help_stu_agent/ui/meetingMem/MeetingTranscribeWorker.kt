@@ -45,7 +45,7 @@ class MeetingTranscribeWorker(
     }
 
     private val baseUrl = "http://10.29.238.57:8001"
-    private val endpoint = "/meeting_transcribe"
+    private val endpoint = "/api/v1/transcribe/meeting"
 
     override suspend fun doWork() = withContext(Dispatchers.IO) {
         var audioPath = inputData.getString(KEY_AUDIO_PATH).orEmpty()

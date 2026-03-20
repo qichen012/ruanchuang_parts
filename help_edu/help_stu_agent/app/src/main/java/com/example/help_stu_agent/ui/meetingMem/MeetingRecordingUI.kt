@@ -318,7 +318,7 @@ fun LessonHeaderCard(
             Column(Modifier.padding(24.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        if (meeting != null) "LATEST SUMMARY" else "TOPIC",
+                        if (meeting != null) "LATEST SUMMARY" else "MEETING INFO",
                         color = Color(0xFF94A3B8),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
@@ -328,7 +328,7 @@ fun LessonHeaderCard(
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = meeting?.summary?.takeIf { it.isNotBlank() } ?: "Advanced Calculus 101",
+                    text = meeting?.summary?.takeIf { it.isNotBlank() } ?: "No meetings recorded yet",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color(0xFF0F172A),
@@ -337,8 +337,8 @@ fun LessonHeaderCard(
                 )
                 Spacer(Modifier.height(24.dp))
                 
-                val displayDate = meeting?.createdAt?.let { formatDateTime(it) } ?: "Aug 13th"
-                val displayUpdate = meeting?.updatedAt?.let { formatDateTime(it) } ?: "13:30 PM"
+                val displayDate = meeting?.createdAt?.let { formatDateTime(it) } ?: "Not available"
+                val displayUpdate = meeting?.updatedAt?.let { formatDateTime(it) } ?: "No time record"
                 
                 Row(Modifier.fillMaxWidth()) {
                     InfoBlock(
@@ -346,7 +346,7 @@ fun LessonHeaderCard(
                         iconBg = Color(0xFFFEF9C3),
                         iconTint = Color(0xFFEAB308),
                         label = "CREATED",
-                        value = displayDate.substringBefore(" •")
+                        value = if (meeting != null) displayDate.substringBefore(" •") else "N/A"
                     )
                     Spacer(Modifier.width(24.dp))
                     Box(Modifier.width(1.dp).height(40.dp).background(Color(0xFFF1F5F9)))
@@ -355,8 +355,8 @@ fun LessonHeaderCard(
                         icon = if (meeting != null) Icons.Outlined.History else Icons.Default.AccessTime,
                         iconBg = Color(0xFFD1FAE5),
                         iconTint = Color(0xFF10B981),
-                        label = if (meeting != null) "UPDATED" else "TIME",
-                        value = displayUpdate.substringAfter("• ").ifBlank { displayUpdate }
+                        label = if (meeting != null) "UPDATED" else "STATUS",
+                        value = if (meeting != null) displayUpdate.substringAfter("• ").ifBlank { displayUpdate } else "Empty"
                     )
                 }
             }

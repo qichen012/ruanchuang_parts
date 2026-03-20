@@ -2,9 +2,16 @@ package com.example.help_stu_agent.ui.uploadPdf
 
 import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
+import com.example.help_stu_agent.ui.treeStructure.KnowledgeJson
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -20,9 +27,6 @@ import java.util.concurrent.TimeUnit
 object PdfTreeCache {
     @Volatile var latestJson: String? = null
     @Volatile var latestJobId: String? = null
-}
-object PdfCardCache {
-    @Volatile var latestCardJson: String? = null
 }
 
 enum class PdfStage {
@@ -52,6 +56,7 @@ object PdfBackendPipeline {
      * 真机访问电脑：改成 http://<电脑局域网IP>:8000
      */
     const val BASE_URL = "http://10.29.142.138:8001"
+    const val RAG_URL = "http://10.29.238.57:8002"
 
 
     private val http = OkHttpClient.Builder()
@@ -60,6 +65,11 @@ object PdfBackendPipeline {
         .readTimeout(120, TimeUnit.SECONDS)
         .writeTimeout(120, TimeUnit.SECONDS)
         .build()
+
+    private val jsonConfig = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+    }
 
     suspend fun runPipeline(
         context: Context,
@@ -94,13 +104,21 @@ object PdfBackendPipeline {
         }
 
         onUpdate(PdfUiUpdate(PdfStage.Processing, 0.95f, "拉取结果中…"))
-        val json = fetchResultJson(jobId)
+        val jsonString = fetchResultJson(jobId)
+        
+        try {
+            val root = jsonConfig.decodeFromString<KnowledgeJson>(jsonString)
+            val pdfName = getFileName(context, pdfUri) ?: "document.pdf"
+            syncTreeToRag(root, pdfName)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
-        PdfTreeCache.latestJson = json
+        PdfTreeCache.latestJson = jsonString
         onUpdate(PdfUiUpdate(PdfStage.Done, 1f, "处理完成，可进入知识树"))
 
 
-        return@withContext json
+        return@withContext jsonString
     }
 
     suspend fun runCardPipeline(
@@ -303,8 +321,69 @@ object PdfBackendPipeline {
             return respStr
         }
     }
+
+    // 1. 定义发送给服务 B 的数据模型
+    @Serializable
+    data class SyncToRagReq(
+        val documents: List<String>,
+        val metadatas: List<Map<String, String>>,
+        val collection: String = "concepts"
+    )
+
+    // 2. 提取并推送的逻辑
+    fun syncTreeToRag(root: KnowledgeJson, pdfName: String) {
+        val allTexts = mutableListOf<String>()
+        val allMetas = mutableListOf<Map<String, String>>()
+
+        // 递归提取整棵树的 content
+        fun traverse(node: KnowledgeJson) {
+            val nodeText = "${node.title}\n${node.content}".trim()
+            if (nodeText.isNotBlank()) {
+                allTexts.add(nodeText)
+                allMetas.add(mapOf(
+                    "node_id" to node.id,
+                    "title" to node.title,
+                    "source" to pdfName
+                ))
+            }
+            node.children.forEach { traverse(it) }
+        }
+        traverse(root)
+
+        if (allTexts.isEmpty()) return
+
+        // 异步推送到服务 B
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val requestBody = jsonConfig.encodeToString(SyncToRagReq(allTexts, allMetas))
+                    .toRequestBody("application/json; charset=utf-8".toMediaType())
+
+                val request = Request.Builder()
+                    .url("${RAG_URL}/documents/add") // 服务 B 的地址
+                    .post(requestBody)
+                    .build()
+
+                http.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        println("成功将知识点同步到 RAG 后端: ${response.code}")
+                    } else {
+                        println("同步 RAG 失败: ${response.code} ${response.body?.string()}")
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun getFileName(context: Context, uri: Uri): String? {
+        return try {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (cursor.moveToFirst() && nameIndex != -1) cursor.getString(nameIndex) else null
+            } ?: uri.path?.substringAfterLast('/')
+        } catch (e: Exception) {
+            uri.path?.substringAfterLast('/')
+        }
+    }
 }
-
-
-
-

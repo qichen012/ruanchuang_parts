@@ -1,12 +1,37 @@
 package com.example.help_stu_agent.ui.sparkyLink
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -14,10 +39,31 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Title
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,30 +71,76 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import coil.compose.rememberAsyncImagePainter
+import com.example.help_stu_agent.data.db.AppDatabase
+import com.example.help_stu_agent.data.db.PhotoLogEntity
+import com.example.help_stu_agent.data.db.SparkyLinkLogEntity
+import com.example.help_stu_agent.data.local.UserManager
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
 fun SparkyLinkPage(
     onBack: () -> Unit,
-    onOpenReport: (String) -> Unit
+    viewModel: SparkyLinkViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    // 渐变背景色
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val userManager = remember { UserManager(context) }
+    val currentUserId by userManager.userIdFlow.collectAsState(initial = 0)
+
+    val db = remember { AppDatabase.getInstance(context) }
+    val photoLogDao = db.photoLogDao()
+    val knowledgeCardDao = db.knowledgeCardDao()
+    val sparkyLinkLogDao = db.sparkyLinkLogDao()
+
+    var showPhotoDateSelector by remember { mutableStateOf(false) }
+    var showReportDateSelector by remember { mutableStateOf(false) }
+
+    val uploadedDates by photoLogDao.getUploadedDates(currentUserId ?: 0)
+        .collectAsState(initial = emptyList())
+    val reportDates by knowledgeCardDao.getReportDates()
+        .collectAsState(initial = emptyList())
+
     val bgGradient = Brush.verticalGradient(
         colors = listOf(
-            Color(0xFFE3F2F9), // 顶部淡蓝色
-            Color(0xFFF7FBFC), // 中部偏白
-            Color(0xFFF3F8FB)  // 底部淡蓝
+            Color(0xFFE3F2F9),
+            Color(0xFFF7FBFC),
+            Color(0xFFF3F8FB)
         )
     )
+
+    LaunchedEffect(currentUserId) {
+        currentUserId?.let { viewModel.updateUserId(it.toString()) }
+    }
+
+    LaunchedEffect(uiState.posteriorInsight, uiState.keyConcepts, uiState.isLoading) {
+        if (uiState.posteriorInsight.isNotBlank() && !uiState.isLoading) {
+            sparkyLinkLogDao.insert(
+                SparkyLinkLogEntity(
+                    userId = currentUserId ?: 0,
+                    dateA = uiState.dateA,
+                    dateB = uiState.dateB,
+                    insight = uiState.posteriorInsight,
+                    concepts = uiState.keyConcepts
+                )
+            )
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -57,49 +149,286 @@ fun SparkyLinkPage(
             .systemBarsPadding()
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1. 顶部导航栏
-            SparkyHeader(onBack = onBack)
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 2. 核心双拼卡片区
-            SparkySplitCard()
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // 3. Slogan (奇妙共鸣)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                contentPadding = PaddingValues(top = 0.dp, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.AutoAwesome,
-                    contentDescription = null,
-                    tint = Color(0xFF0EA5E9),
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "探索记忆碎片间的奇妙共鸣",
-                    color = Color(0xFF64748B),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                item {
+                    SparkyHeader(onBack = onBack)
+                }
+
+                item {
+                    SparkySplitCard(
+                        rawDate = uiState.dateA,
+                        transformedDate = uiState.dateB,
+                        onRawClick = { showPhotoDateSelector = true },
+                        onTransformedClick = { showReportDateSelector = true }
+                    )
+                }
+
+                if (uiState.isLoading) {
+                    item {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            CircularProgressIndicator(color = Color(0xFFA78BFA))
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "正在分析跨时空关联...",
+                                color = Color(0xFF64748B),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+
+                if (uiState.error != null) {
+                    item {
+                        Text(
+                            text = "Error: ${uiState.error}",
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 14.sp,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                if (uiState.posteriorInsight.isNotBlank()) {
+                    item {
+                        InsightResultCard(
+                            insight = uiState.posteriorInsight,
+                            concepts = uiState.keyConcepts
+                        )
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp),
+                color = Color.Transparent,
+                shadowElevation = 0.dp
+            ) {
+                SlideToSparkButton(
+                    enabled = !uiState.isLoading,
+                    onSlideComplete = {
+                        viewModel.updateMock(false)
+                        viewModel.generateSparkLinkBrief()
+                    }
+                )
+            }
+        }
 
-            // 4. 底部滑动按钮
-            SlideToSparkButton(
-                onSlideComplete = {
-                    // 滑动完成后的逻辑，比如开始生成 Spark
+        if (showPhotoDateSelector) {
+            PhotoDateSelectionDialog(
+                dates = uploadedDates,
+                onDismiss = { showPhotoDateSelector = false },
+                onDateSelected = {
+                    viewModel.updateDateA(it)
+                    showPhotoDateSelector = false
+                },
+                getPhotos = { date ->
+                    photoLogDao.getPhotosByDate(currentUserId ?: 0, date)
                 }
             )
+        }
 
-            Spacer(modifier = Modifier.height(40.dp))
+        if (showReportDateSelector) {
+            ReportDateSelectionDialog(
+                dates = reportDates,
+                onDismiss = { showReportDateSelector = false },
+                onDateSelected = {
+                    viewModel.updateDateB(it)
+                    showReportDateSelector = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun PhotoDateSelectionDialog(
+    dates: List<String>,
+    onDismiss: () -> Unit,
+    onDateSelected: (String) -> Unit,
+    getPhotos: suspend (String) -> List<PhotoLogEntity>
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = "选择图片上传日期",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (dates.isEmpty()) {
+                    Text(
+                        text = "暂无上传记录",
+                        color = Color(0xFF94A3B8),
+                        modifier = Modifier
+                            .padding(vertical = 24.dp)
+                            .align(Alignment.CenterHorizontally)
+                    )
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                        items(dates) { date ->
+                            val photos by produceState<List<PhotoLogEntity>>(
+                                initialValue = emptyList(),
+                                key1 = date
+                            ) {
+                                value = getPhotos(date)
+                            }
+
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onDateSelected(date) }
+                                    .padding(vertical = 12.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.CalendarToday,
+                                        contentDescription = null,
+                                        tint = Color(0xFF64748B),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = date,
+                                        fontSize = 16.sp,
+                                        color = Color(0xFF334155),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+
+                                if (photos.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        items(photos) { photo ->
+                                            Image(
+                                                painter = rememberAsyncImagePainter(photo.localUri),
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(60.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(Color(0xFFF1F5F9)),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            HorizontalDivider(color = Color(0xFFF1F5F9))
+                        }
+                    }
+                }
+
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("取消", color = Color(0xFF5D5FEF))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ReportDateSelectionDialog(
+    dates: List<String>,
+    onDismiss: () -> Unit,
+    onDateSelected: (String) -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = "选择 Daily Report 日期",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (dates.isEmpty()) {
+                    Text(
+                        text = "暂无报告记录",
+                        color = Color(0xFF94A3B8),
+                        modifier = Modifier
+                            .padding(vertical = 24.dp)
+                            .align(Alignment.CenterHorizontally)
+                    )
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
+                        items(dates) { date ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onDateSelected(date) }
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Description,
+                                    contentDescription = null,
+                                    tint = Color(0xFFD4A373),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = date,
+                                    fontSize = 16.sp,
+                                    color = Color(0xFF334155)
+                                )
+                            }
+
+                            HorizontalDivider(color = Color(0xFFF1F5F9))
+                        }
+                    }
+                }
+
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("取消", color = Color(0xFF5D5FEF))
+                }
+            }
         }
     }
 }
@@ -111,7 +440,6 @@ private fun SparkyHeader(onBack: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        // 圆形返回按钮
         Surface(
             onClick = onBack,
             shape = CircleShape,
@@ -122,13 +450,12 @@ private fun SparkyHeader(onBack: () -> Unit) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = null,
                     tint = Color(0xFF1E293B)
                 )
             }
         }
 
-        // 居中标题
         Text(
             text = "Spark Link",
             fontSize = 20.sp,
@@ -140,68 +467,73 @@ private fun SparkyHeader(onBack: () -> Unit) {
 }
 
 @Composable
-private fun SparkySplitCard() {
+private fun SparkySplitCard(
+    rawDate: String,
+    transformedDate: String,
+    onRawClick: () -> Unit,
+    onTransformedClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            // 整个大卡片的外层圆角和阴影
-            .shadow(16.dp, RoundedCornerShape(32.dp), spotColor = Color(0xFF94A3B8).copy(alpha = 0.3f))
+            .shadow(
+                16.dp,
+                RoundedCornerShape(32.dp),
+                spotColor = Color(0xFF94A3B8).copy(alpha = 0.3f)
+            )
             .clip(RoundedCornerShape(32.dp))
     ) {
-        // 利用 Canvas 绘制上下的异形背景（中间向下凹陷）
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(340.dp) // 给定卡片整体高度
+                .height(320.dp)
         ) {
             val w = size.width
             val h = size.height
-            val midY = h * 0.45f // 上半部分占据的比例
-            val dipDepth = 25.dp.toPx() // 中间凹陷的深度
+            val midY = h * 0.45f
+            val dipDepth = 25.dp.toPx()
 
-            // 上半部分形状 (白色)
-            val topPath = Path().apply {
-                moveTo(0f, 0f)
-                lineTo(w, 0f)
-                lineTo(w, midY)
-                // 绘制向下凹陷的二次贝塞尔曲线
-                quadraticBezierTo(w / 2f, midY + dipDepth, 0f, midY)
-                close()
-            }
-            drawPath(topPath, Color.White)
+            drawPath(
+                path = Path().apply {
+                    moveTo(0f, 0f)
+                    lineTo(w, 0f)
+                    lineTo(w, midY)
+                    quadraticBezierTo(w / 2f, midY + dipDepth, 0f, midY)
+                    close()
+                },
+                color = Color.White
+            )
 
-            // 下半部分形状 (米黄色)
-            val bottomPath = Path().apply {
-                moveTo(0f, midY)
-                quadraticBezierTo(w / 2f, midY + dipDepth, w, midY)
-                lineTo(w, h)
-                lineTo(0f, h)
-                close()
-            }
-            drawPath(bottomPath, Color(0xFFFFF9ED)) // 淡米黄色
+            drawPath(
+                path = Path().apply {
+                    moveTo(0f, midY)
+                    quadraticBezierTo(w / 2f, midY + dipDepth, w, midY)
+                    lineTo(w, h)
+                    lineTo(0f, h)
+                    close()
+                },
+                color = Color(0xFFFFF9ED)
+            )
         }
 
-        // 卡片内部的文字和图标层
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(340.dp)
+                .height(320.dp)
         ) {
-            // --- 上半部分 (Text Context) ---
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.45f)
-                    .padding(horizontal = 24.dp, vertical = 24.dp)
+                    .clickable { onRawClick() }
+                    .padding(24.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Text Context",
+                        text = "Image Context",
                         color = Color(0xFF94A3B8),
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
@@ -211,7 +543,7 @@ private fun SparkySplitCard() {
                         color = Color(0xFFF1F5F9)
                     ) {
                         Text(
-                            text = "RAW",
+                            text = "HISTORY",
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -222,37 +554,40 @@ private fun SparkySplitCard() {
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     IconBox(icon = Icons.Default.Title)
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Classic", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
-                        Text("Source Data", fontSize = 13.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Medium)
+                        Text(
+                            text = "Uploaded Photos",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E293B)
+                        )
+                        Text(
+                            text = rawDate,
+                            fontSize = 13.sp,
+                            color = Color(0xFF94A3B8)
+                        )
                     }
-                    Text("05.20", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFCBD5E1))
                 }
-                Spacer(modifier = Modifier.height(10.dp))
             }
 
-            // --- 下半部分 (Transformed) ---
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.55f)
-                    .padding(horizontal = 24.dp, vertical = 24.dp)
+                    .clickable { onTransformedClick() }
+                    .padding(24.dp)
             ) {
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Transformed",
+                        text = "Report Data",
                         color = Color(0xFFD4A373),
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
@@ -263,7 +598,7 @@ private fun SparkySplitCard() {
                         border = BorderStroke(1.dp, Color(0xFFFFE4C4))
                     ) {
                         Text(
-                            text = "INSIGHT",
+                            text = "HISTORY",
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -274,49 +609,69 @@ private fun SparkySplitCard() {
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconBox(icon = Icons.Default.Eco, iconTint = Color(0xFF65A30D)) // 植物图标
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconBox(
+                        icon = Icons.Default.Eco,
+                        iconTint = Color(0xFF65A30D)
+                    )
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Frontier", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
-                        Text("Reframed", fontSize = 13.sp, color = Color(0xFFD4A373), fontWeight = FontWeight.Medium)
+                        Text(
+                            text = "Daily Reports",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E293B)
+                        )
+                        Text(
+                            text = transformedDate,
+                            fontSize = 13.sp,
+                            color = Color(0xFFD4A373)
+                        )
                     }
-                    Text("06.15", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1E293B))
                 }
             }
         }
 
-        // 位于分割线正中央的圆形 Icon (带有阴影)
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                // 0.45f 是上半部比例，减去圆圈高度一半使其完美居中于弧线上
-                .offset(y = (340.dp * 0.45f) - 24.dp)
+                .offset(y = (320.dp * 0.45f) - 24.dp)
                 .size(48.dp)
-                .shadow(8.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.1f))
+                .shadow(
+                    8.dp,
+                    CircleShape,
+                    spotColor = Color.Black.copy(alpha = 0.1f)
+                )
                 .background(Color.White, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Default.Title,
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color(0xFF1E293B),
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
     }
 }
 
 @Composable
-private fun IconBox(icon: ImageVector, iconTint: Color = Color(0xFF64748B)) {
+private fun IconBox(
+    icon: ImageVector,
+    iconTint: Color = Color(0xFF64748B)
+) {
     Box(
         modifier = Modifier
             .size(56.dp)
-            .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(16.dp))
-            .background(Color.White, RoundedCornerShape(16.dp)),
+            .border(
+                1.dp,
+                Color(0xFFF1F5F9),
+                RoundedCornerShape(16.dp)
+            )
+            .background(
+                Color.White,
+                RoundedCornerShape(16.dp)
+            ),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -329,99 +684,394 @@ private fun IconBox(icon: ImageVector, iconTint: Color = Color(0xFF64748B)) {
 }
 
 @Composable
-private fun SlideToSparkButton(onSlideComplete: () -> Unit) {
+private fun SlideToSparkButton(
+    enabled: Boolean = true,
+    onSlideComplete: () -> Unit
+) {
     var containerWidth by remember { mutableIntStateOf(0) }
     val thumbSizeDp = 56.dp
     val paddingDp = 6.dp
     val density = LocalDensity.current
 
-    // 计算滑动组件的参数
     val thumbSizePx = with(density) { thumbSizeDp.toPx() }
     val paddingPx = with(density) { paddingDp.toPx() }
-    val maxDragPx = containerWidth - thumbSizePx - (paddingPx * 2)
 
     val dragOffset = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
 
+    val maxDragPx = (containerWidth - thumbSizePx - (paddingPx * 2)).coerceAtLeast(0f)
+    val progress = if (maxDragPx > 0f) {
+        (dragOffset.value / maxDragPx).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+
+    val thumbScale by animateFloatAsState(
+        targetValue = if (progress > 0f) 1.04f else 1f,
+        animationSpec = tween(180),
+        label = "thumbScale"
+    )
+
+    val labelAlpha by animateFloatAsState(
+        targetValue = (1f - progress * 0.5f).coerceIn(0.45f, 1f),
+        animationSpec = tween(180),
+        label = "labelAlpha"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .height(68.dp)
-            .shadow(16.dp, CircleShape, spotColor = Color(0xFFA78BFA).copy(alpha = 0.3f))
-            .background(Color.Black, CircleShape)
+            .height(70.dp)
+            .shadow(
+                elevation = 14.dp,
+                shape = CircleShape,
+                spotColor = Color(0xFFA78BFA).copy(alpha = 0.20f)
+            )
+            .clip(CircleShape)
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = if (enabled) {
+                        listOf(Color(0xFF0F172A), Color(0xFF111827))
+                    } else {
+                        listOf(Color(0xFF475569), Color(0xFF475569))
+                    }
+                )
+            )
             .onSizeChanged { containerWidth = it.width },
         contentAlignment = Alignment.CenterStart
     ) {
-        // 背景文字
+        if (containerWidth > 0 && progress > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress.coerceAtLeast(0.14f))
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1D4ED8).copy(alpha = 0.18f),
+                                Color(0xFF6366F1).copy(alpha = 0.22f)
+                            )
+                        )
+                    )
+            )
+        }
+
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Slide to Spark",
-                color = Color.White,
+                text = if (enabled) "Slide to Spark" else "Generating...",
+                color = Color.White.copy(alpha = labelAlpha),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.width(12.dp))
-            // 右侧的几个引导小箭头
+
+            Spacer(modifier = Modifier.width(10.dp))
+
             Row {
                 repeat(3) { index ->
+                    val arrowAlpha = (0.22f + index * 0.18f) * labelAlpha
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.3f + (index * 0.2f)), // 渐变透明度
+                        tint = Color.White.copy(alpha = arrowAlpha),
                         modifier = Modifier.size(18.dp)
                     )
                 }
             }
         }
 
-        // 可拖动的圆形 Thumb
         if (containerWidth > 0) {
             Box(
                 modifier = Modifier
                     .padding(start = paddingDp)
                     .offset { IntOffset(dragOffset.value.roundToInt(), 0) }
                     .size(thumbSizeDp)
-                    .background(Color(0xFFF8FAFC), CircleShape) // 微灰偏白
-                    .pointerInput(Unit) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = {
-                                coroutineScope.launch {
-                                    // 超过 80% 视为解锁成功
-                                    if (dragOffset.value > maxDragPx * 0.8f) {
-                                        dragOffset.animateTo(maxDragPx)
-                                        onSlideComplete()
-                                        // 如果需要重置，可以延迟后弹回
-                                        // delay(500)
-                                        // dragOffset.animateTo(0f)
-                                    } else {
-                                        // 未达到阈值，弹回原点
-                                        dragOffset.animateTo(0f)
+                    .graphicsLayer {
+                        scaleX = thumbScale
+                        scaleY = thumbScale
+                    }
+                    .shadow(
+                        elevation = if (progress > 0f) 10.dp else 6.dp,
+                        shape = CircleShape,
+                        spotColor = Color.Black.copy(alpha = 0.14f)
+                    )
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color.White, Color(0xFFF1F5F9))
+                        ),
+                        shape = CircleShape
+                    )
+                    .then(
+                        if (enabled) {
+                            Modifier.pointerInput(maxDragPx) {
+                                detectHorizontalDragGestures(
+                                    onDragEnd = {
+                                        coroutineScope.launch {
+                                            if (dragOffset.value > maxDragPx * 0.82f) {
+                                                dragOffset.animateTo(
+                                                    targetValue = maxDragPx,
+                                                    animationSpec = tween(180)
+                                                )
+                                                onSlideComplete()
+                                                dragOffset.animateTo(
+                                                    targetValue = 0f,
+                                                    animationSpec = spring(
+                                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                        stiffness = Spring.StiffnessLow
+                                                    )
+                                                )
+                                            } else {
+                                                dragOffset.animateTo(
+                                                    targetValue = 0f,
+                                                    animationSpec = spring(
+                                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                                        stiffness = Spring.StiffnessMedium
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onHorizontalDrag = { change, dragAmount ->
+                                        change.consume()
+                                        coroutineScope.launch {
+                                            dragOffset.snapTo(
+                                                (dragOffset.value + dragAmount)
+                                                    .coerceIn(0f, maxDragPx)
+                                            )
+                                        }
                                     }
-                                }
-                            },
-                            onHorizontalDrag = { change, dragAmount ->
-                                change.consume()
-                                coroutineScope.launch {
-                                    val newOffset = (dragOffset.value + dragAmount)
-                                        .coerceIn(0f, maxDragPx)
-                                    dragOffset.snapTo(newOffset)
-                                }
+                                )
                             }
-                        )
-                    },
+                        } else {
+                            Modifier
+                        }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Slide",
-                    tint = Color(0xFF1E293B)
+                    tint = Color(0xFF1E293B),
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
     }
+}
+
+@Composable
+private fun InsightResultCard(
+    insight: String,
+    concepts: String
+) {
+    val clipboardManager = LocalClipboardManager.current
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .shadow(
+                elevation = 12.dp,
+                shape = RoundedCornerShape(28.dp),
+                spotColor = Color(0xFF6366F1).copy(alpha = 0.12f)
+            ),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(22.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = Color(0xFF6366F1),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Posterior Insight",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 18.sp,
+                        color = Color(0xFF1E293B)
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        clipboardManager.setText(
+                            AnnotatedString(insight + "\n\n" + concepts)
+                        )
+                    },
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Copy",
+                        tint = Color(0xFF94A3B8),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(Color(0xFFF8FAFC), Color(0xFFF1F5F9))
+                        ),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            ) {
+                Text(
+                    text = insight,
+                    color = Color(0xFF334155),
+                    fontSize = 15.sp,
+                    lineHeight = 24.sp
+                )
+            }
+
+            if (concepts.isNotBlank()) {
+                Spacer(modifier = Modifier.height(22.dp))
+                StructuredConceptsSection(concepts = concepts)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StructuredConceptsSection(concepts: String) {
+    val sections = remember(concepts) { parseConceptSections(concepts) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.Eco,
+                contentDescription = null,
+                tint = Color(0xFF10B981),
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Key Concepts",
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = Color(0xFF64748B)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        if (sections.isEmpty()) {
+            PlainConceptCard(
+                title = "内容",
+                body = concepts
+            )
+        } else {
+            sections.forEachIndexed { index, section ->
+                PlainConceptCard(
+                    title = section.title,
+                    body = section.body,
+                    accentColor = when {
+                        section.title.contains("课外") -> Color(0xFF6366F1)
+                        section.title.contains("课内") -> Color(0xFFF59E0B)
+                        section.title.contains("关联") -> Color(0xFF10B981)
+                        section.title.contains("复习") || section.title.contains("练习") -> Color(0xFFEC4899)
+                        else -> Color(0xFF64748B)
+                    }
+                )
+                if (index != sections.lastIndex) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+        }
+    }
+}
+
+private data class ConceptSection(
+    val title: String,
+    val body: String
+)
+
+private fun parseConceptSections(text: String): List<ConceptSection> {
+    val normalized = text
+        .replace("\r\n", "\n")
+        .replace(Regex("""^\s*1\.\s*课外信息要点"""), "## 课外信息要点")
+        .replace(Regex("""\n\s*2\.\s*课内简报要点"""), "\n## 课内简报要点")
+        .replace(Regex("""\n\s*3\.\s*关联点列表"""), "\n## 关联点列表")
+        .replace(Regex("""\n\s*4\.\s*建议的复习/练习路径"""), "\n## 建议的复习/练习路径")
+        .trim()
+
+    val regex = Regex(
+        pattern = """##\s*(.+?)\n(.*?)(?=\n##\s*.+?$|\Z)""",
+        option = RegexOption.DOT_MATCHES_ALL
+    )
+
+    return regex.findAll(normalized).map {
+        ConceptSection(
+            title = it.groupValues[1].trim(),
+            body = it.groupValues[2].trim()
+        )
+    }.toList()
+}
+
+@Composable
+private fun PlainConceptCard(
+    title: String,
+    body: String,
+    accentColor: Color = Color(0xFF6366F1)
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.14f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(accentColor, CircleShape)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = title,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = formatConceptBody(body),
+                color = Color(0xFF475569),
+                fontSize = 14.sp,
+                lineHeight = 22.sp
+            )
+        }
+    }
+}
+
+private fun formatConceptBody(text: String): String {
+    return text
+        .replace("**", "")
+        .replace(" - ", "\n• ")
+        .replace(Regex("""\n\s*-\s+"""), "\n• ")
+        .replace(Regex("""\n\s*(\d+\))"""), "\n$1")
+        .trim()
 }

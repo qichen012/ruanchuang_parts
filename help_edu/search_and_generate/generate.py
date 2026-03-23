@@ -1,9 +1,69 @@
 import os
+import json
 import requests
 from openai import OpenAI
 from bs4 import BeautifulSoup
 import time
 from api import get_qwen_client
+
+
+def extract_keywords_from_report(report_text):
+    """从每日简报中提取关键词用于GitHub仓库搜索"""
+    if not report_text:
+        return []
+
+    print(f"📝 [关键词提取] 正在分析每日简报...")
+
+    client = get_qwen_client()
+
+    prompt = f"""分析以下每日简报，提取5-8个适合GitHub仓库搜索的关键词。
+
+每日简报内容：
+{report_text}
+
+要求：
+1. 提取技术术语、框架、工具、概念名称
+2. 优先提取英文关键词（GitHub搜索效果更好）
+3. 仅输出JSON数组格式，不要其他文字
+4. 示例：["machine learning", "neural network", "pytorch", "transformer"]
+
+输出："""
+
+    try:
+        if client:
+            resp = client.chat.completions.create(
+                model="qwen-plus",
+                messages=[
+                    {"role": "system", "content": "你是一位专业的技术关键词提取助手，擅长从文本中提取与软件开发、技术框架相关的关键词。"},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=200
+            )
+            result_text = resp.choices[0].message.content.strip()
+
+            # 解析JSON数组
+            try:
+                # 尝试直接解析
+                keywords = json.loads(result_text)
+            except json.JSONDecodeError:
+                # 如果直接解析失败，尝试提取JSON部分
+                import re
+                match = re.search(r'\[.*\]', result_text, re.DOTALL)
+                if match:
+                    keywords = json.loads(match.group())
+                else:
+                    keywords = []
+
+            print(f"✅ 关键词提取完成: {keywords}")
+            return keywords if isinstance(keywords, list) else []
+        else:
+            print("⚠️ 未找到Qwen API Key")
+            return []
+
+    except Exception as e:
+        print(f"❌ 关键词提取失败: {e}")
+        return []
 
 
 
@@ -47,7 +107,7 @@ def generate_expansion(concept):
     
     urls_text = "\n\n".join(url_parts)
     
-    prompt_text = f"""你是一位教育助手，请根据以下课内概念，写一段联系现实的扩写内容。
+    prompt_text = f"""你是一位教育助手，请根据以下课内概念，找到同样idea在现实中更多领域异曲同工的应用，比如；若idea是“反馈比控制指令更重要”，则希望你告诉我滑雪场缆车的系统设计就是应用了这个思想，当雪场风速过大时缆车速度会下降“。
 
 课内概念：{concept}
 
@@ -73,7 +133,7 @@ def generate_expansion(concept):
                 model="qwen-plus",
                 messages=[
                     {"role": "system", "content": "你是一位专业的教育助手，擅长将知识与现实联系起来。"},
-                    {"role": "user", "content": prompt_word}
+                    {"role": "user", "content": prompt_text}
                 ],
                 temperature=0.7,
                 max_tokens=800

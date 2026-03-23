@@ -45,9 +45,4 @@ class KnowledgeTreeRepository(private val context: Context) {
         return if (f.exists()) f.readText(Charsets.UTF_8) else null
     }
 
-    suspend fun deleteById(id: String) {
-        val e = dao.getById(id) ?: return
-        File(e.jsonPath).delete()
-        dao.deleteById(id)
-    }
 }

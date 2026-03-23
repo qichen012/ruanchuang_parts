@@ -1,4 +1,4 @@
-package com.example.help_stu_agent.ui.theme
+package com.example.help_stu_agent.designsystem.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

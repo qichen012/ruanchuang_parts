@@ -31,6 +31,5 @@ object AppRoutes {
     const val TabHome = "tab_home"
     const val TabFeatures = "tab_features"
     const val TabUser = "tab_user"
-    const val EliteIdeaDetail = "elite_idea_detail/{ideaId}"
-    fun eliteIdeaDetail(ideaId: String): String = "elite_idea_detail/${Uri.encode(ideaId)}"
+    const val EliteIdeaDetail = "elite_idea_detail"
 }

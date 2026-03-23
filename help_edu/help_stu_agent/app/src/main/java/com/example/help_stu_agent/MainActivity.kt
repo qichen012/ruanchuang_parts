@@ -9,7 +9,7 @@ import androidx.compose.material3.Surface
 
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
-import com.example.help_stu_agent.ui.theme.HelpStuAgentTheme
+import com.example.help_stu_agent.designsystem.theme.HelpStuAgentTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

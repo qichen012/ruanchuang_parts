@@ -25,12 +25,12 @@ class MeetingMinutesRepository(private val dao: MeetingMinutesDao) {
 
     // 保存或更新会议纪要
     suspend fun save(entity: MeetingMinutesEntity) {
-        dao.upsert(entity)
+        dao.insert(entity)
     }
 
     // 批量保存
     suspend fun saveAll(entities: List<MeetingMinutesEntity>) {
-        entities.forEach { dao.upsert(it) }
+        entities.forEach { dao.insert(it) }
     }
 
     // 搜索会议纪要

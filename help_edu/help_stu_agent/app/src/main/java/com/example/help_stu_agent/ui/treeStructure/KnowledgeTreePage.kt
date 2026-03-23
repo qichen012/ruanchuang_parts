@@ -33,8 +33,8 @@ import com.example.help_stu_agent.designsystem.components.AppCard
 import com.example.help_stu_agent.designsystem.components.AppTooltipCard
 import com.example.help_stu_agent.designsystem.components.AppTopBar
 import com.example.help_stu_agent.designsystem.tokens.AppTokens
-import com.example.help_stu_agent.ui.theme.BranchPaletteDark
-import com.example.help_stu_agent.ui.theme.BranchPaletteLight
+import com.example.help_stu_agent.designsystem.theme.BranchPaletteDark
+import com.example.help_stu_agent.designsystem.theme.BranchPaletteLight
 import com.example.help_stu_agent.ui.uploadPdf.PdfTreeCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

@@ -7,8 +7,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -136,7 +136,7 @@ fun KnowledgeCardDetailPage(
 
                     // 1. Key Concepts 渲染区
                     item {
-                        SectionHeader(Icons.Default.FormatListBulleted, Color(0xFF10B981), "核心概念梳理")
+                        SectionHeader(Icons.AutoMirrored.Filled.FormatListBulleted, Color(0xFF10B981), "核心概念梳理")
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = Color.White),

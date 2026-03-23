@@ -3,7 +3,6 @@ package com.example.help_stu_agent.ui.meetingMem
 import android.app.*
 import android.content.Intent
 import android.media.MediaRecorder
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -76,7 +75,7 @@ class MeetingRecorderService : Service() {
         level01 = 0f
         isPaused = false
 
-        val r = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(this) else MediaRecorder()
+        val r = MediaRecorder(this)
         recorder = r
 
         runCatching {
@@ -102,31 +101,27 @@ class MeetingRecorderService : Service() {
 
     private fun pauseRecording() {
         if (recorder == null || isPaused) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            runCatching {
-                recorder?.pause()
-                isPaused = true
-                // We keep the ticker running to update the UI with 0 volume, 
-                // but we handle the timer increment inside startTicker.
-                pushState(isRecording = true, isPaused = true, error = null)
-                val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-                nm.notify(NOTIF_ID, buildNotification("Paused ${fmt(seconds)}"))
-            }.onFailure { e ->
-                Log.e("MeetMemo", "Pause failed", e)
-            }
+        runCatching {
+            recorder?.pause()
+            isPaused = true
+            // We keep the ticker running to update the UI with 0 volume,
+            // but we handle the timer increment inside startTicker.
+            pushState(isRecording = true, isPaused = true, error = null)
+            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            nm.notify(NOTIF_ID, buildNotification("Paused ${fmt(seconds)}"))
+        }.onFailure { e ->
+            Log.e("MeetMemo", "Pause failed", e)
         }
     }
 
     private fun resumeRecording() {
         if (recorder == null || !isPaused) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            runCatching {
-                recorder?.resume()
-                isPaused = false
-                pushState(isRecording = true, isPaused = false, error = null)
-            }.onFailure { e ->
-                Log.e("MeetMemo", "Resume failed", e)
-            }
+        runCatching {
+            recorder?.resume()
+            isPaused = false
+            pushState(isRecording = true, isPaused = false, error = null)
+        }.onFailure { e ->
+            Log.e("MeetMemo", "Resume failed", e)
         }
     }
 
@@ -166,7 +161,6 @@ class MeetingRecorderService : Service() {
                     MeetingTranscribeWorker.KEY_TRACE_ID to traceId
                 )
             )
-            .addTag(MeetingTranscribeWorker.TAG_MEETING_TRANSCRIBE)
             .addTag("trace_$traceId")
             .build()
 
@@ -232,7 +226,6 @@ class MeetingRecorderService : Service() {
     }
 
     private fun ensureChannel() {
-        if (Build.VERSION.SDK_INT < 26) return
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "Meeting Recording", NotificationManager.IMPORTANCE_LOW).apply {
@@ -247,7 +240,7 @@ class MeetingRecorderService : Service() {
         val openIntent = packageManager.getLaunchIntentForPackage(packageName)
         val pi = PendingIntent.getActivity(
             this, 0, openIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0)
+            PendingIntent.FLAG_UPDATE_CURRENT or (PendingIntent.FLAG_IMMUTABLE)
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)

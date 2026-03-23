@@ -7,12 +7,25 @@ import com.example.help_stu_agent.data.db.EliteIdeaEntity
 import kotlinx.coroutines.flow.Flow
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import java.security.MessageDigest
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
+import android.util.Base64
 
-class EliteIdeaRepository(context: Context) {
+class EliteIdeaRepository(private val context: Context) {
     private val dao = AppDatabase.getInstance(context).eliteIdeaDao()
 
     fun observeAll(): Flow<List<EliteIdeaEntity>> = dao.observeAll()
+
+    fun observeByDate(date: LocalDate): Flow<List<EliteIdeaEntity>> {
+        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        return dao.observeByDate(startOfDay, endOfDay)
+    }
+
+    fun getReportDates(): Flow<List<String>> = dao.getReportDates()
 
     suspend fun saveFromBackendJson(jsonArrayString: String) {
         val entities = mutableListOf<EliteIdeaEntity>()
@@ -60,39 +73,40 @@ class EliteIdeaRepository(context: Context) {
                         }
 
                         val matched = if (targetCardIndex == -1) {
-                            // 没有关联字段时，先全部挂上，保证前端能显示
                             true
                         } else {
                             caseCardIndex == targetCardIndex
                         }
 
                         if (matched) {
+                            val caseTitle = caseObj.optString(
+                                "case_title",
+                                caseObj.optString("title", "")
+                            )
+                            val caseDescription = caseObj.optString(
+                                "case_content",
+                                caseObj.optString("description", "")
+                            )
+                            val imageUrl = caseObj.optString("image_url", "")
+                            val imageDataUrl = caseObj.optString("image_data_url", "")
+
+                            val localImagePath = saveImageDataUrlToLocal(
+                                dataUrl = imageDataUrl,
+                                key = "${title}_${targetCardIndex}_${caseTitle}_${k}"
+                            )
+
+                            val searchAndGenerate = caseObj.optJSONObject("search_and_generate")
+
                             val instanceNode = JSONObject().apply {
-                                put(
-                                    "title",
-                                    caseObj.optString(
-                                        "case_title",
-                                        caseObj.optString("title", "")
-                                    )
-                                )
-                                put(
-                                    "description",
-                                    caseObj.optString(
-                                        "case_content",
-                                        caseObj.optString("description", "")
-                                    )
-                                )
-                                put("image_url", caseObj.optString("image_url", ""))
-                                put("image_data_url", caseObj.optString("image_data_url", ""))
+                                put("title", caseTitle)
+                                put("description", caseDescription)
+                                put("image_url", imageUrl)
+                                put("local_image_path", localImagePath)
+                                put("search_and_generate", searchAndGenerate ?: JSONObject())
                             }
                             instancesArray.put(instanceNode)
                         }
                     }
-
-                    Log.d(
-                        "EliteIdeaDebug",
-                        "card[$j] title=$title, targetCardIndex=$targetCardIndex, matched=${instancesArray.length()}"
-                    )
 
                     entities.add(
                         EliteIdeaEntity(
@@ -107,12 +121,50 @@ class EliteIdeaRepository(context: Context) {
                 }
             }
 
-            dao.clearAll()
             if (entities.isNotEmpty()) {
                 dao.insertAll(entities)
             }
         } catch (e: Exception) {
             Log.e("EliteIdeaDebug", "saveFromBackendJson error", e)
         }
+    }
+
+    private fun saveImageDataUrlToLocal(dataUrl: String, key: String): String {
+        if (dataUrl.isBlank() || !dataUrl.startsWith("data:image")) return ""
+
+        return try {
+            val commaIndex = dataUrl.indexOf(",")
+            if (commaIndex == -1) return ""
+
+            val meta = dataUrl.substring(0, commaIndex)
+            val base64Part = dataUrl.substring(commaIndex + 1)
+
+            val ext = when {
+                meta.contains("image/png") -> "png"
+                meta.contains("image/jpeg") -> "jpg"
+                meta.contains("image/webp") -> "webp"
+                else -> "img"
+            }
+
+            val imageBytes = Base64.decode(base64Part, Base64.DEFAULT)
+
+            val dir = File(context.filesDir, "elite_idea_images")
+            if (!dir.exists()) dir.mkdirs()
+
+            val fileName = "${md5(key)}.$ext"
+            val outFile = File(dir, fileName)
+            outFile.writeBytes(imageBytes)
+
+            outFile.absolutePath
+        } catch (e: Exception) {
+            Log.e("EliteIdeaDebug", "saveImageDataUrlToLocal error", e)
+            ""
+        }
+    }
+
+    private fun md5(text: String): String {
+        val digest = MessageDigest.getInstance("MD5")
+        val bytes = digest.digest(text.toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
     }
 }

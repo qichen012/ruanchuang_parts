@@ -7,6 +7,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Assignment
+import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,10 +25,7 @@ import java.util.Date
 fun MeetingMinutesResult(
     minutes: MeetingMinutes,
     createdAt: Long = System.currentTimeMillis(),
-    showCard: Boolean = true,
-    onCopy: () -> Unit = {},
-    onShare: () -> Unit = {},
-    onRecordAgain: () -> Unit = {}
+    showCard: Boolean = true
 ) {
     Column(
         modifier = Modifier
@@ -112,7 +111,7 @@ fun MeetingMinutesResult(
             // 待办事项部分
             if (minutes.todos.isNotEmpty()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.Assignment, null, tint = Color(0xFF94A3B8), modifier = Modifier.size(20.dp))
+                    Icon(Icons.AutoMirrored.Outlined.Assignment, null, tint = Color(0xFF94A3B8), modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
                         "ACTION ITEMS",
@@ -138,7 +137,7 @@ fun MeetingMinutesResult(
                 var expanded by remember { mutableStateOf(false) }
                 ResultSectionCard(
                     title = "Raw Transcript",
-                    icon = Icons.Outlined.Notes,
+                    icon = Icons.AutoMirrored.Outlined.Notes,
                     content = {
                         Column {
                             Text(
@@ -226,7 +225,8 @@ fun TakeawayItem(text: String) {
                 text = text,
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF475569),
-                lineHeight = 22.sp
+                lineHeight = 26.sp,
+                modifier = Modifier.weight(1f)
             )
         }
     }

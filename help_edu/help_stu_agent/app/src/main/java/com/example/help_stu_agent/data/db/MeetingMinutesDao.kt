@@ -12,7 +12,7 @@ interface MeetingMinutesDao {
 
     // 插入或更新
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(entity: MeetingMinutesEntity)
+    suspend fun insert(entity: MeetingMinutesEntity)
 
     // 监听所有记录（按时间倒序）
     @Query("SELECT * FROM meeting_minutes ORDER BY createdAt DESC")

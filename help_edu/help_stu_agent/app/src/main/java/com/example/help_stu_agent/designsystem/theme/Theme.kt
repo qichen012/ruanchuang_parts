@@ -1,4 +1,4 @@
-package com.example.help_stu_agent.ui.theme
+package com.example.help_stu_agent.designsystem.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

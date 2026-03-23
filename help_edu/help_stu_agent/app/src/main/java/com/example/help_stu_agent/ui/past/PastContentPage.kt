@@ -59,8 +59,7 @@ suspend fun fetchRecommendation(userId: Int): RecommendBrief? = withContext(Disp
 
 @Composable
 fun PastContentPage(
-    onBack: () -> Unit,
-    onWaveMenuClick: () -> Unit = {}
+    onBack: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 

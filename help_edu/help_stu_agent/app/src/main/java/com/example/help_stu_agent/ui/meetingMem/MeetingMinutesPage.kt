@@ -1,10 +1,6 @@
 package com.example.help_stu_agent.ui.meetingMem
 
 import android.Manifest
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -69,34 +65,30 @@ fun MeetingMinutesPage(
     val wi by workerUuid?.let { id -> wm.getWorkInfoByIdLiveData(id).observeAsState() }
         ?: remember { mutableStateOf<WorkInfo?>(null) }
 
-    var stage by remember { mutableStateOf("") }
-    var progress by remember { mutableFloatStateOf(0f) }
-
-
     LaunchedEffect(wi) {
         val info = wi ?: return@LaunchedEffect
-        stage = info.progress.getString(MeetingTranscribeWorker.KEY_STAGE).orEmpty()
-        progress = info.progress.getFloat(MeetingTranscribeWorker.KEY_PROGRESS, 0f).coerceIn(0f, 1f)
 
         when (info.state) {
             WorkInfo.State.SUCCEEDED -> {
                 val text = info.outputData.getString(MeetingTranscribeWorker.KEY_TEXT).orEmpty()
-                val summary = info.outputData.getString(MeetingTranscribeWorker.KEY_SUMMARY).orEmpty()
-                val points = info.outputData.getString(MeetingTranscribeWorker.KEY_POINTS).orEmpty()
-                val todos = info.outputData.getString(MeetingTranscribeWorker.KEY_TODOS).orEmpty()
-                
-                rawResult = if (summary.isNotBlank() || points.isNotBlank() || todos.isNotBlank()) {
-                    """{"text":"$text","summary":"$summary","points":$points,"todos":$todos}"""
-                } else {
-                    text
-                }
+                val minutesMarkdown = info.outputData.getString(MeetingTranscribeWorker.KEY_MINUTES).orEmpty()
+
+                rawResult = minutesMarkdown.ifBlank { text }
                 screen = MeetScreen.Text
             }
-            WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> screen = MeetScreen.Processing
-            WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> screen = MeetScreen.Record
+
+            WorkInfo.State.RUNNING,
+            WorkInfo.State.ENQUEUED,
+            WorkInfo.State.BLOCKED -> {
+                screen = MeetScreen.Processing
+            }
+
+            WorkInfo.State.FAILED,
+            WorkInfo.State.CANCELLED -> {
+                screen = MeetScreen.Record
+            }
         }
     }
-
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -200,24 +192,9 @@ fun MeetingMinutesPage(
                     }
 
                     MeetScreen.Text -> {
-                        val minutes = remember(rawResult) { parseMeetingMinutes(rawResult.orEmpty()) }
+                        val minutes = remember(rawResult) { parseMeetingMinutesMarkdown(rawResult.orEmpty()) }
                         MeetingMinutesResult(
-                            minutes = minutes,
-                            onCopy = {
-                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                cm.setPrimaryClip(ClipData.newPlainText("Meet Memo", minutes.toPlainText()))
-                            },
-                            onShare = {
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, minutes.toPlainText())
-                                }
-                                context.startActivity(Intent.createChooser(intent, "Share"))
-                            },
-                            onRecordAgain = {
-                                rawResult = null
-                                screen = MeetScreen.Record
-                            }
+                            minutes = minutes
                         )
                     }
                 }

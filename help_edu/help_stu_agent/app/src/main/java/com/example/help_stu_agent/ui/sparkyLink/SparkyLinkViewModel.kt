@@ -2,14 +2,21 @@ package com.example.help_stu_agent.ui.sparkyLink
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.help_stu_agent.data.repo.SparkyLinkRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
+private fun todayString(): String {
+    return LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+}
 
 data class SparkyLinkUiState(
-    val dateA: String = "2026-03-18",
-    val dateB: String = "2026-03-19",
+    val dateA: String = todayString(),
+    val dateB: String = todayString(),
     val userId: String = "test_user",
     val forceRegen: Boolean = false,
     val saveToFile: Boolean = true,

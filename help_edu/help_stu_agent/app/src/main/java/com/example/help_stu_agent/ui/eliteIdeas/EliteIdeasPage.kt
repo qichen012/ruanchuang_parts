@@ -1,5 +1,6 @@
 package com.example.help_stu_agent.ui.eliteIdeas
 
+import android.os.Parcelable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,10 +12,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.Adjust
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.help_stu_agent.data.repo.EliteIdeaRepository
 import kotlinx.coroutines.launch
+import kotlinx.parcelize.Parcelize
 import org.json.JSONArray
 import java.time.LocalDate
 import java.time.YearMonth
@@ -44,7 +45,7 @@ import kotlin.math.ceil
 @Composable
 fun EliteIdeasPage(
     onBack: () -> Unit,
-    onOpenIdeaDetail: (String) -> Unit
+    onOpenIdeaDetail: (RealizationInstance) -> Unit
 ) {
     var calendarExpanded by remember { mutableStateOf(false) }
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
@@ -53,7 +54,9 @@ fun EliteIdeasPage(
     val context = LocalContext.current
     val repository = remember { EliteIdeaRepository(context) }
 
-    val ideaEntities by repository.observeAll().collectAsState(initial = emptyList())
+    val ideaEntities by remember(selectedDate) {
+        repository.observeByDate(selectedDate)
+    }.collectAsState(initial = emptyList())
 
     val pageDataList = remember(ideaEntities) {
         ideaEntities.map { entity ->
@@ -63,12 +66,22 @@ fun EliteIdeasPage(
                 for (i in 0 until jsonArray.length()) {
                     val obj = jsonArray.optJSONObject(i)
                     if (obj != null) {
+                        val sgObj = obj.optJSONObject("search_and_generate")
+                        val sg = sgObj?.let {
+                            SearchAndGenerate(
+                                concept = it.optString("concept", ""),
+                                expansion = it.optString("expansion", ""),
+                                zipped = it.optString("zipped", "")
+                            )
+                        }
+
                         instances.add(
                             RealizationInstance(
                                 title = obj.optString("title", obj.optString("name", "实例 ${i + 1}")),
                                 description = obj.optString("description", obj.optString("content", "")),
                                 imageUrl = obj.optString("image_url", ""),
-                                imageDataUrl = obj.optString("image_data_url", "")
+                                localImagePath = obj.optString("local_image_path", ""),
+                                searchAndGenerate = sg
                             )
                         )
                     }
@@ -97,27 +110,52 @@ fun EliteIdeasPage(
                             modifier = Modifier.clickable { calendarExpanded = !calendarExpanded }
                         ) {
                             Text("Elite Ideas", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Icon(Icons.Default.ExpandMore, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                            Text(
+                                text = selectedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
                         }
                     },
-                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }
+                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } }
                 )
                 AnimatedVisibility(visible = calendarExpanded) {
-                    CalendarStrip(currentMonth, selectedDate, { currentMonth = currentMonth.minusMonths(1) }, { currentMonth = currentMonth.plusMonths(1) }, { selectedDate = it })
+                    CalendarStrip(
+                        month = currentMonth,
+                        selectedDate = selectedDate,
+                        onPrevMonth = { currentMonth = currentMonth.minusMonths(1) },
+                        onNextMonth = { currentMonth = currentMonth.plusMonths(1) },
+                        onSelect = {
+                            selectedDate = it
+                            calendarExpanded = false
+                        }
+                    )
                 }
             }
         }
     ) { padding ->
         if (pageDataList.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("暂无 Elite Ideas，上传 PDF 获取你的核心思想卡片吧！", color = Color.Gray)
+                Text("该日期暂无 Elite Ideas", color = Color.Gray)
             }
             return@Scaffold
         }
 
         val pagerState = rememberPagerState(pageCount = { pageDataList.size })
         val coroutineScope = rememberCoroutineScope()
-        val currentPageData = pageDataList[pagerState.currentPage]
+        
+        // 当数据列表变化时，重置 Pager 到第一页
+        LaunchedEffect(pageDataList) {
+            if (pageDataList.isNotEmpty()) {
+                pagerState.scrollToPage(0)
+            }
+        }
+
+        val currentPageData = if (pagerState.currentPage < pageDataList.size) {
+            pageDataList[pagerState.currentPage]
+        } else {
+            null
+        }
 
         LazyColumn(
             modifier = Modifier.padding(padding).fillMaxSize(),
@@ -126,13 +164,15 @@ fun EliteIdeasPage(
             item {
                 Box(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 40.dp)) {
                     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth()) { pageIndex ->
-                        val pageData = pageDataList[pageIndex]
-                        EliteIdeaCard(
-                            category = pageData.category,
-                            title = pageData.title,
-                            description = pageData.description,
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
+                        if (pageIndex < pageDataList.size) {
+                            val pageData = pageDataList[pageIndex]
+                            EliteIdeaCard(
+                                category = pageData.category,
+                                title = pageData.title,
+                                description = pageData.description,
+                                modifier = Modifier.padding(horizontal = 24.dp)
+                            )
+                        }
                     }
 
                     Row(
@@ -155,16 +195,18 @@ fun EliteIdeasPage(
                 }
             }
 
-            item {
-                Row(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.Adjust, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("REALIZATION INSTANCES", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            if (currentPageData != null) {
+                item {
+                    Row(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Adjust, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("REALIZATION INSTANCES", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    }
                 }
-            }
 
-            items(currentPageData.instances) { instance ->
-                InstanceCard(instance = instance, onClick = { onOpenIdeaDetail(instance.title) })
+                items(currentPageData.instances) { instance ->
+                    InstanceCard(instance = instance, onClick = { onOpenIdeaDetail(instance) })
+                }
             }
         }
     }
@@ -173,7 +215,7 @@ fun EliteIdeasPage(
 
 @Composable
 private fun InstanceCard(instance: RealizationInstance, onClick: () -> Unit) {
-    val imageModel = instance.imageDataUrl?.takeIf { it.isNotBlank() }
+    val imageModel = instance.localImagePath.takeIf { it.isNotBlank() }
         ?: instance.imageUrl?.takeIf { it.isNotBlank() }
 
     Box(
@@ -257,9 +299,9 @@ private fun CalendarStrip( month: YearMonth, selectedDate: LocalDate, onPrevMont
 
     Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(horizontal = 16.dp, vertical = 14.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onPrevMonth) { Icon(Icons.Default.ArrowBack, contentDescription = "Prev month") }
+            IconButton(onClick = onPrevMonth) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Prev month") }
             Text(text = title, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurface)
-            IconButton(onClick = onNextMonth) { Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Next month", modifier = Modifier.rotate(180f)) }
+            IconButton(onClick = onNextMonth) { Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Next month", modifier = Modifier.rotate(180f)) }
         }
         Spacer(Modifier.height(10.dp))
         val week = listOf("S", "M", "T", "W", "T", "F", "S")
@@ -287,10 +329,20 @@ private fun CalendarStrip( month: YearMonth, selectedDate: LocalDate, onPrevMont
     }
 }
 
+@Parcelize
+data class SearchAndGenerate(
+    val concept: String = "",
+    val expansion: String = "",
+    val zipped: String = ""
+) : Parcelable
+
+@Parcelize
 data class RealizationInstance(
     val title: String,
     val description: String,
     val imageUrl: String? = null,
-    val imageDataUrl: String? = null
-)
+    val localImagePath: String = "",
+    val searchAndGenerate: SearchAndGenerate? = null
+) : Parcelable
+
 data class IdeaPageData(val category: String, val title: String, val description: String, val instances: List<RealizationInstance>)

@@ -16,26 +16,28 @@ data class MeetingMinutesEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
 
-    // 用户信息
     val userId: Int = 0,
 
-    // 原始数据
-    val rawText: String,           // ASR 识别出的原始文本
-    val summary: String,           // AI 摘要
-    val pointsJson: String,        // points JSON 数组字符串
-    val todosJson: String,         // todos JSON 数组字符串
+    // 原始内容
+    val rawText: String,
+    val summary: String,
+    val pointsJson: String,
+    val todosJson: String,
 
-    // 音频文件信息
-    val audioFileName: String,     // 音频文件名称
-    val audioFileSize: Long,       // 音频文件大小（字节）
-    val audioLocalPath: String?,   // 本地缓存路径（可选）
+    // 新接口返回的 markdown 全文
+    val minutesMarkdown: String = "",
 
-    // 时间戳
+    // 音频信息
+    val audioFileName: String,
+    val audioFileSize: Long,
+    val audioLocalPath: String?,
+
+    // 时间
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 
-    // 可选的元数据
-    val courseName: String = "",   // 课程名称
-    val topic: String = "",        // 主题
-    val duration: Long = 0L        // 录音时长（秒）
+    // 额外元数据
+    val courseName: String = "",
+    val topic: String = "",
+    val duration: Long = 0L
 )

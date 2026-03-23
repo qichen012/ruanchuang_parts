@@ -30,6 +30,7 @@ import com.example.help_stu_agent.ui.openSource.OpenSourcePage
 import com.example.help_stu_agent.ui.past.PastContentPage
 import com.example.help_stu_agent.ui.userProfile.UserProfilePage
 import com.example.help_stu_agent.ui.dailyReport.DailyReportPage
+import com.example.help_stu_agent.ui.eliteIdeas.RealizationInstance
 import com.example.help_stu_agent.ui.sparkyLink.SparkyLinkPage
 import com.example.help_stu_agent.ui.treeHistory.KnowledgeTreeHistoryPage
 import com.example.help_stu_agent.ui.treeStructure.KnowledgeTreePageFromCache
@@ -227,8 +228,12 @@ fun AppNavGraph(
         composable(AppRoutes.EliteIdeas) {
             EliteIdeasPage(
                 onBack = { navController.popBackStack() },
-                onOpenIdeaDetail = { ideaId ->
-                    navController.navigate(AppRoutes.eliteIdeaDetail(ideaId)) {
+                onOpenIdeaDetail = { instance ->
+                    navController.currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("selected_elite_instance", instance)
+
+                    navController.navigate(AppRoutes.EliteIdeaDetail) {
                         launchSingleTop = true
                     }
                 }
@@ -273,15 +278,18 @@ fun AppNavGraph(
             )
         }
 
-        composable(
-            route = AppRoutes.EliteIdeaDetail,
-            arguments = listOf(navArgument("ideaId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val ideaId = backStackEntry.arguments?.getString("ideaId").orEmpty()
-            EliteIdeaDetailPage(
-                ideaId = ideaId,
-                onBack = { navController.popBackStack() }
-            )
+        composable(AppRoutes.EliteIdeaDetail) {
+            val instance =
+                navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<RealizationInstance>("selected_elite_instance")
+
+            if (instance != null) {
+                EliteIdeaDetailPage(
+                    instance = instance,
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
 
     }

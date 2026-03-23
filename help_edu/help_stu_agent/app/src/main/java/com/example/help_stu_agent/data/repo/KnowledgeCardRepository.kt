@@ -19,8 +19,6 @@ class KnowledgeCardRepository(context: Context) {
 
     suspend fun getById(id: String): KnowledgeCardEntity? = dao.getById(id)
 
-    suspend fun deleteById(id: String) = dao.deleteById(id)
-
     suspend fun saveNewCard(
         rawJson: String,
         pdfDisplayName: String? = null,

@@ -2,8 +2,10 @@ import os
 import requests
 from bs4 import BeautifulSoup
 import time
-from api import get_bocha_api_key
 
+def get_bocha_api_key():
+    """从环境变量获取博查API Key"""
+    return os.getenv("BOCHA_API_KEY")
 
 def fetch_page_content(url, timeout=10):
     """抓取网页内容"""

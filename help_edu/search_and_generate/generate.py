@@ -4,7 +4,6 @@ import requests
 from openai import OpenAI
 from bs4 import BeautifulSoup
 import time
-from api import get_qwen_client
 
 
 def extract_keywords_from_report(report_text):
